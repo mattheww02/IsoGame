@@ -1,0 +1,14 @@
+[gd_scene load_steps=4 format=3 uid="uid://c23cflepupeeh"]
+
+[ext_resource type="PackedScene" uid="uid://ceesnl7jko7b8" path="res://player.tscn" id="2_1bvp3"]
+[ext_resource type="PackedScene" uid="uid://nln0s8pcp6kn" path="res://game_map.tscn" id="2_h2yge"]
+[ext_resource type="Script" uid="uid://bptrvkdpfslh8" path="res://GameCamera.cs" id="4_1bvp3"]
+
+[node name="Main" type="Node2D"]
+
+[node name="GameMap" parent="." instance=ExtResource("2_h2yge")]
+_playerPackedScene = ExtResource("2_1bvp3")
+
+[node name="GameCamera" type="Camera2D" parent="."]
+position = Vector2(87, 680)
+script = ExtResource("4_1bvp3")
