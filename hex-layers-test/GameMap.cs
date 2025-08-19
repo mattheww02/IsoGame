@@ -18,6 +18,7 @@ public partial class GameMap : Node2D
 
 	private LevelArray _level;
     private Player _player;
+	private readonly List<Player> _players;
 
     private const int SizeX = 150, SizeY = 100, SizeZ = 7;
 	private const int MaxLandHeight = 8, GlobalWaterLevel = 4;
@@ -27,6 +28,7 @@ public partial class GameMap : Node2D
         _tileSpriteProvider = new();
 		_mapLayers = [];
 		_guiLayer = new();
+		_players = [];
 		_seed = (int)(new Random().NextInt64(500));
     }
 
@@ -62,7 +64,25 @@ public partial class GameMap : Node2D
         _player = _playerPackedScene.Instantiate<Player>();
         AddChild(_player);
         _player.Initialise(_level, _mapLayers[0].TileSet.TileSize, new Vector2I(20, 20), GetPositionAdjusted);
+
+		for (int i = 0; i < 10; i++) SpawnPlayer();
     }
+
+	private void SpawnPlayer()
+	{
+		var rng = new RandomNumberGenerator();
+		Vector2I gridPosition;
+
+		do
+		{
+			gridPosition = new Vector2I(rng.RandiRange(1, SizeX - 1), rng.RandiRange(1, SizeY - 1));
+		} while (!_level.GetTile(gridPosition).Walkable);
+		
+		var newPlayer = _playerPackedScene.Instantiate<Player>();
+		AddChild(newPlayer);
+		newPlayer.Initialise(_level, _mapLayers[0].TileSet.TileSize, gridPosition, GetPositionAdjusted);
+		_players.Add(newPlayer);
+	}
 
 	public override void _Process(double delta)
 	{

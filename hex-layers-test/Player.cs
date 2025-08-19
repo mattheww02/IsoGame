@@ -46,8 +46,7 @@ public partial class Player : Node2D
 
 		_levelArray.ForEach((tile, x, y) =>
 		{
-			if (tile.WaterLevel > tile.Height) 
-				_aStarGrid.SetPointSolid(new Vector2I(x, y));
+			if (!tile.Walkable) _aStarGrid.SetPointSolid(new Vector2I(x, y));
 		});
     }
 

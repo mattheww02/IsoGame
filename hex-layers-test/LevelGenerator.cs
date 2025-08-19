@@ -42,6 +42,7 @@ public class LevelGenerator
         GenerateHeightMap();
         SetTileTypes();
         SetTileVariants();
+        SetTileWalkability();
         return _level;
     }
 
@@ -97,5 +98,11 @@ public class LevelGenerator
         });
     }
 
-
+    private void SetTileWalkability()
+    {
+        _level.ForEach(tile =>
+        {
+            tile.Walkable = tile.WaterLevel <= tile.Height;
+        });
+    }
 }
