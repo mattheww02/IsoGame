@@ -17,8 +17,8 @@ public partial class GameMap : Node2D
 	private readonly int _seed;
 
 	private LevelArray _level;
-    private Player _player;
 	private readonly List<Player> _players;
+	private Player _selectedPlayer;
 
     private const int SizeX = 150, SizeY = 100, SizeZ = 7;
 	private const int MaxLandHeight = 8, GlobalWaterLevel = 4;
@@ -61,10 +61,6 @@ public partial class GameMap : Node2D
 			}
 		}
 
-        _player = _playerPackedScene.Instantiate<Player>();
-        AddChild(_player);
-        _player.Initialise(_level, _mapLayers[0].TileSet.TileSize, new Vector2I(20, 20), GetPositionAdjusted);
-
 		for (int i = 0; i < 10; i++) SpawnPlayer();
     }
 
@@ -106,7 +102,23 @@ public partial class GameMap : Node2D
 			{
                 var mousePositionGrid = selectedMapLayer.LocalToMap(mousePosition - selectedMapLayer.Position);
 				_guiLayer.HighlightTile(new Vector3I(mousePositionGrid.X, mousePositionGrid.Y, selectedMapLayer.LayerHeight));
-				_player.MoveTo(mousePositionGrid);
+
+				//TODO: use dict here instead of looping through all players (will get slow)
+				bool playerJustSelected = false;
+                foreach (var player in _players)
+				{
+                    if (player.TargetGridPosition == mousePositionGrid)
+					{
+						_selectedPlayer = player;
+						playerJustSelected = true;
+						break;
+					}
+                }
+				if (!playerJustSelected)
+				{
+                    _selectedPlayer?.MoveTo(mousePositionGrid);
+                    _selectedPlayer = null;
+                }
 			}
 
             GetViewport().SetInputAsHandled();

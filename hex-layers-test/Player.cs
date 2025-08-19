@@ -9,6 +9,8 @@ public partial class Player : Node2D
 {
 	public event Func<Vector2I, Vector2> GetPositionAdjusted;
 
+	public Vector2I TargetGridPosition => _targetGridPosition;
+
     private Vector2 _targetPosition;
 	private Vector2I _targetGridPosition;
     private readonly AStarGrid2D _aStarGrid;

@@ -263,3 +263,5 @@ paket-files/
 
 # Visual Studio Design Time Build
 .vs/
+/hex-layers-test/.vs/HEX LAYERS TEST/CopilotIndices
+/hex-layers-test/.vs
