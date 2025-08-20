@@ -3,6 +3,7 @@ using HexLayersTest;
 using HexLayersTest.Objects;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 public partial class GameMap : Node2D
 {
@@ -18,9 +19,9 @@ public partial class GameMap : Node2D
 
 	private LevelArray _level;
 	private readonly List<Player> _players;
-	private Player _selectedPlayer;
+	private List<Player> _selectedPlayers;
 
-    private const int SizeX = 150, SizeY = 100, SizeZ = 7;
+    private const int SizeX = 150, SizeY = 100, SizeZ = 10;
 	private const int MaxLandHeight = 8, GlobalWaterLevel = 4;
 
 	public GameMap()
@@ -29,6 +30,7 @@ public partial class GameMap : Node2D
 		_mapLayers = [];
 		_guiLayer = new();
 		_players = [];
+		_selectedPlayers = [];
 		_seed = (int)(new Random().NextInt64(500));
     }
 
@@ -88,42 +90,85 @@ public partial class GameMap : Node2D
     {
 		if (@event.IsActionPressed("MouseSelect"))
 		{
-			var mousePosition = GetLocalMousePosition();
-			GameMapLayer selectedMapLayer = null;
+			var mousePositionOnGrid = GetMousePositionOnGrid();
 
-			foreach (var mapLayer in _mapLayers)
+			if (mousePositionOnGrid != null)
 			{
-                var mousePositionGrid = mapLayer.LocalToMap(mousePosition - mapLayer.Position);
-				if (mapLayer.GetCellSourceId(mousePositionGrid) == -1) continue;
-				if (mapLayer.LayerHeight > (selectedMapLayer?.LayerHeight ?? -1)) selectedMapLayer = mapLayer;
-            }
+				var gridPosition = mousePositionOnGrid.Value;
+				_guiLayer.HighlightTile(new Vector3I(gridPosition.X, gridPosition.Y, _level.GetTile(gridPosition).Height));
 
-			if (selectedMapLayer != null)
-			{
-                var mousePositionGrid = selectedMapLayer.LocalToMap(mousePosition - selectedMapLayer.Position);
-				_guiLayer.HighlightTile(new Vector3I(mousePositionGrid.X, mousePositionGrid.Y, selectedMapLayer.LayerHeight));
+				if (_selectedPlayers.Count == 0) //TODO: this is temp to test formation movement
+				{
+					foreach (var player in _players)
+					{
+						int dx = player.TargetGridPosition.X - gridPosition.X;
+						int dy = player.TargetGridPosition.Y - gridPosition.Y;
+                        if (dx >= 0 && dx < 10 && dy >= 0 && dy < 10)
+                        {
+                            _selectedPlayers.Add(player);
+                        }
+                    }
+					GD.Print($"Players selected: {_selectedPlayers.Count}");
+                }
+				else
+				{
+					var minX = _selectedPlayers.Min(p => p.TargetGridPosition.X);
+					var minY = _selectedPlayers.Min(p => p.TargetGridPosition.Y);
+					var maxX = _selectedPlayers.Max(p => p.TargetGridPosition.X);
+					var maxY = _selectedPlayers.Max(p => p.TargetGridPosition.Y);
+					var formation = new GridMoveHelper.GridFormation<Player>(
+						Formation: new Player[maxX - minX + 1, maxY - minY + 1],
+						GridPosition: new Vector2I(minX, minY));
+					foreach (var player in _selectedPlayers)
+					{
+						formation.Formation[player.TargetGridPosition.X - minX, player.TargetGridPosition.Y - minY] = player;
+					}
+					var moves = new GridMoveHelper(_level).GetMovedFormation(formation, gridPosition);
+					foreach (var (player, destination) in moves)
+					{
+						player.MoveTo(new Vector2I(destination.X + minX, destination.Y + minY));
+					}
+					_selectedPlayers.Clear();
+				}
 
 				//TODO: use dict here instead of looping through all players (will get slow)
-				bool playerJustSelected = false;
-                foreach (var player in _players)
-				{
-                    if (player.TargetGridPosition == mousePositionGrid)
-					{
-						_selectedPlayer = player;
-						playerJustSelected = true;
-						break;
-					}
-                }
-				if (!playerJustSelected)
-				{
-                    _selectedPlayer?.MoveTo(mousePositionGrid);
-                    _selectedPlayer = null;
-                }
+				//bool playerJustSelected = false;
+    //            foreach (var player in _players)
+				//{
+    //                if (player.TargetGridPosition == gridPosition)
+				//	{
+				//		_selectedPlayer = player;
+				//		playerJustSelected = true;
+				//		break;
+				//	}
+    //            }
+				//if (!playerJustSelected)
+				//{
+    //                _selectedPlayer?.MoveTo(gridPosition);
+    //                _selectedPlayer = null;
+    //            }
 			}
 
             GetViewport().SetInputAsHandled();
         }
 	}
+
+	private Vector2I? GetMousePositionOnGrid()
+	{
+        var mousePosition = GetLocalMousePosition();
+        GameMapLayer selectedMapLayer = null;
+
+        foreach (var mapLayer in _mapLayers)
+        {
+            var mousePositionGrid = mapLayer.LocalToMap(mousePosition - mapLayer.Position);
+            if (mapLayer.GetCellSourceId(mousePositionGrid) == -1) continue;
+            if (mapLayer.LayerHeight > (selectedMapLayer?.LayerHeight ?? -1)) selectedMapLayer = mapLayer;
+        }
+
+		if (selectedMapLayer == null) return null;
+
+		return selectedMapLayer.LocalToMap(mousePosition - selectedMapLayer.Position);
+    }
 
     private Vector2 GetPositionAdjusted(Vector2I gridPosition)
     {
