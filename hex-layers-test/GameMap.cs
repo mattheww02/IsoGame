@@ -84,6 +84,7 @@ public partial class GameMap : Node2D
 
 	public override void _Process(double delta)
 	{
+        if (MousePositionOnGrid(out var targetPosition))
         {
             if (_dragStart != null)
             {
