@@ -14,5 +14,5 @@ public class LevelTile
     public Enums.TileType TileType { get; set; }
     public Enums.TileVariant TileVariant { get; set; }
     public int? WaterLevel { get; set; }
-    public bool Walkable { get; set; }
+    public bool Navigable { get; set; }
 }

@@ -130,7 +130,7 @@ public class GridMoveHelper
         var walkableTiles = new List<Vector2I>();
         for (int x = minX; x <= maxX; x++)
             for (int y = minY; y <= maxY; y++)
-                if (_level.GetTile(x, y).Walkable)
+                if (_level.GetTile(x, y).Navigable)
                     walkableTiles.Add(new Vector2I(x, y));
         return walkableTiles;
     }

@@ -9,7 +9,7 @@ public partial class Player : Node2D
 {
 	public event Func<Vector2I, Vector2> GetPositionAdjusted;
 
-	public Vector2I TargetGridPosition => _targetGridPosition;
+	public Vector2I GridPosition => _targetGridPosition;
 
     private Vector2 _targetPosition;
 	private Vector2I _targetGridPosition;
@@ -48,7 +48,7 @@ public partial class Player : Node2D
 
 		_levelArray.ForEach((tile, x, y) =>
 		{
-			if (!tile.Walkable) _aStarGrid.SetPointSolid(new Vector2I(x, y));
+			if (!tile.Navigable) _aStarGrid.SetPointSolid(new Vector2I(x, y));
 		});
     }
 
