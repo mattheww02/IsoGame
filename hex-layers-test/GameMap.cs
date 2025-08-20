@@ -90,84 +90,80 @@ public partial class GameMap : Node2D
     {
 		if (@event.IsActionPressed("MouseSelect"))
 		{
-			var mousePositionOnGrid = GetMousePositionOnGrid();
-
-			if (mousePositionOnGrid != null)
+			if (MousPositionOnGrid(out var targetPosition))
 			{
-				var gridPosition = mousePositionOnGrid.Value;
-				_guiLayer.HighlightTile(new Vector3I(gridPosition.X, gridPosition.Y, _level.GetTile(gridPosition).Height));
+				ShowTileSelected(targetPosition);
 
-				if (_selectedPlayers.Count == 0) //TODO: this is temp to test formation movement
+				if (_selectedPlayers.Count == 0) 
 				{
-					foreach (var player in _players)
-					{
-						int dx = player.TargetGridPosition.X - gridPosition.X;
-						int dy = player.TargetGridPosition.Y - gridPosition.Y;
-                        if (dx >= 0 && dx < 10 && dy >= 0 && dy < 10)
-                        {
-                            _selectedPlayers.Add(player);
-                        }
-                    }
-					GD.Print($"Players selected: {_selectedPlayers.Count}");
+					MultiSelectPlayers(targetPosition);
                 }
 				else
 				{
-					var minX = _selectedPlayers.Min(p => p.TargetGridPosition.X);
-					var minY = _selectedPlayers.Min(p => p.TargetGridPosition.Y);
-					var maxX = _selectedPlayers.Max(p => p.TargetGridPosition.X);
-					var maxY = _selectedPlayers.Max(p => p.TargetGridPosition.Y);
-					var formation = new GridMoveHelper.GridFormation<Player>(
-						Formation: new Player[maxX - minX + 1, maxY - minY + 1],
-						GridPosition: new Vector2I(minX, minY));
-					foreach (var player in _selectedPlayers)
-					{
-						formation.Formation[player.TargetGridPosition.X - minX, player.TargetGridPosition.Y - minY] = player;
-					}
-					var moves = new GridMoveHelper(_level).GetMovedFormation(formation, gridPosition);
-					foreach (var (player, destination) in moves)
-					{
-						player.MoveTo(new Vector2I(destination.X + minX, destination.Y + minY));
-					}
-					_selectedPlayers.Clear();
-				}
-
-				//TODO: use dict here instead of looping through all players (will get slow)
-				//bool playerJustSelected = false;
-    //            foreach (var player in _players)
-				//{
-    //                if (player.TargetGridPosition == gridPosition)
-				//	{
-				//		_selectedPlayer = player;
-				//		playerJustSelected = true;
-				//		break;
-				//	}
-    //            }
-				//if (!playerJustSelected)
-				//{
-    //                _selectedPlayer?.MoveTo(gridPosition);
-    //                _selectedPlayer = null;
-    //            }
+					MoveSelectedPlayers(targetPosition);
+                    _selectedPlayers.Clear();
+                }
 			}
 
             GetViewport().SetInputAsHandled();
         }
 	}
+	
+	private void MultiSelectPlayers(Vector2I targetPosition)
+    { //TODO: this is temp to test formation movement
+        foreach (var player in _players)
+        {
+            int dx = player.TargetGridPosition.X - targetPosition.X;
+            int dy = player.TargetGridPosition.Y - targetPosition.Y;
+            if (dx >= 0 && dx < 10 && dy >= 0 && dy < 10)
+            {
+                _selectedPlayers.Add(player);
+            }
+        }
+        GD.Print($"Players selected: {_selectedPlayers.Count}");
+    }
 
-	private Vector2I? GetMousePositionOnGrid()
+	private void ShowTileSelected(Vector2I targetPosition)
+	{
+        _guiLayer.HighlightTile(new Vector3I(targetPosition.X, targetPosition.Y, _level.GetTile(targetPosition).Height));
+    }
+
+	private void MoveSelectedPlayers(Vector2I targetPosition)
+	{
+        var startPosition = new Vector2I(
+			_selectedPlayers.Min(p => p.TargetGridPosition.X),
+			_selectedPlayers.Min(p => p.TargetGridPosition.Y));
+
+        var moves = new GridMoveHelper(_level).GetMovedFormation(
+            _selectedPlayers.Select(p => (p, p.TargetGridPosition)).ToList(),
+            targetPosition - startPosition);
+
+        foreach (var (player, destination) in moves)
+        {
+            player.MoveTo(destination);
+        }
+    }
+
+	private bool MousPositionOnGrid(out Vector2I targetPosition)
 	{
         var mousePosition = GetLocalMousePosition();
         GameMapLayer selectedMapLayer = null;
 
         foreach (var mapLayer in _mapLayers)
         {
-            var mousePositionGrid = mapLayer.LocalToMap(mousePosition - mapLayer.Position);
-            if (mapLayer.GetCellSourceId(mousePositionGrid) == -1) continue;
+            targetPosition = mapLayer.LocalToMap(mousePosition - mapLayer.Position);
+            if (mapLayer.GetCellSourceId(targetPosition) == -1) continue;
             if (mapLayer.LayerHeight > (selectedMapLayer?.LayerHeight ?? -1)) selectedMapLayer = mapLayer;
         }
 
-		if (selectedMapLayer == null) return null;
+		if (selectedMapLayer == null)
+		{
+			targetPosition = default;
+			return false;
+		}
 
-		return selectedMapLayer.LocalToMap(mousePosition - selectedMapLayer.Position);
+		targetPosition = selectedMapLayer.LocalToMap(mousePosition - selectedMapLayer.Position);
+		return true;
     }
 
     private Vector2 GetPositionAdjusted(Vector2I gridPosition)
