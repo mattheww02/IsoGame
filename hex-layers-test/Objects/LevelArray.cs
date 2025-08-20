@@ -34,6 +34,7 @@ public class LevelArray
 
     public LevelTile GetTile(Vector2I position) => GetTile(position.X, position.Y);
     public LevelTile GetTile(int x, int y) => _tileArray[x, y];
+    public Span2D<LevelTile> GetSpan(Rect2I rect) => GetSpan(rect.Position.X, rect.Position.Y, rect.Size.X, rect.Size.Y);
     public Span2D<LevelTile> GetSpan(int x, int y, int w, int h) => new(_tileArray, x, y, w, h);
 
     public void ForEach(Action<LevelTile> action)

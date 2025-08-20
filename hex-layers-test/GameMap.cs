@@ -3,6 +3,7 @@ using HexLayersTest;
 using HexLayersTest.Objects;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 public partial class GameMap : Node2D
 {
@@ -18,9 +19,9 @@ public partial class GameMap : Node2D
 
 	private LevelArray _level;
 	private readonly List<Player> _players;
-	private Player _selectedPlayer;
+	private List<Player> _selectedPlayers;
 
-    private const int SizeX = 150, SizeY = 100, SizeZ = 7;
+    private const int SizeX = 150, SizeY = 100, SizeZ = 10;
 	private const int MaxLandHeight = 8, GlobalWaterLevel = 4;
 
 	public GameMap()
@@ -29,6 +30,7 @@ public partial class GameMap : Node2D
 		_mapLayers = [];
 		_guiLayer = new();
 		_players = [];
+		_selectedPlayers = [];
 		_seed = (int)(new Random().NextInt64(500));
     }
 
@@ -88,42 +90,81 @@ public partial class GameMap : Node2D
     {
 		if (@event.IsActionPressed("MouseSelect"))
 		{
-			var mousePosition = GetLocalMousePosition();
-			GameMapLayer selectedMapLayer = null;
-
-			foreach (var mapLayer in _mapLayers)
+			if (MousPositionOnGrid(out var targetPosition))
 			{
-                var mousePositionGrid = mapLayer.LocalToMap(mousePosition - mapLayer.Position);
-				if (mapLayer.GetCellSourceId(mousePositionGrid) == -1) continue;
-				if (mapLayer.LayerHeight > (selectedMapLayer?.LayerHeight ?? -1)) selectedMapLayer = mapLayer;
-            }
+				ShowTileSelected(targetPosition);
 
-			if (selectedMapLayer != null)
-			{
-                var mousePositionGrid = selectedMapLayer.LocalToMap(mousePosition - selectedMapLayer.Position);
-				_guiLayer.HighlightTile(new Vector3I(mousePositionGrid.X, mousePositionGrid.Y, selectedMapLayer.LayerHeight));
-
-				//TODO: use dict here instead of looping through all players (will get slow)
-				bool playerJustSelected = false;
-                foreach (var player in _players)
+				if (_selectedPlayers.Count == 0) 
 				{
-                    if (player.TargetGridPosition == mousePositionGrid)
-					{
-						_selectedPlayer = player;
-						playerJustSelected = true;
-						break;
-					}
+					MultiSelectPlayers(targetPosition);
                 }
-				if (!playerJustSelected)
+				else
 				{
-                    _selectedPlayer?.MoveTo(mousePositionGrid);
-                    _selectedPlayer = null;
+					MoveSelectedPlayers(targetPosition);
+                    _selectedPlayers.Clear();
                 }
 			}
 
             GetViewport().SetInputAsHandled();
         }
 	}
+	
+	private void MultiSelectPlayers(Vector2I targetPosition)
+    { //TODO: this is temp to test formation movement
+        foreach (var player in _players)
+        {
+            int dx = player.TargetGridPosition.X - targetPosition.X;
+            int dy = player.TargetGridPosition.Y - targetPosition.Y;
+            if (dx >= 0 && dx < 10 && dy >= 0 && dy < 10)
+            {
+                _selectedPlayers.Add(player);
+            }
+        }
+        GD.Print($"Players selected: {_selectedPlayers.Count}");
+    }
+
+	private void ShowTileSelected(Vector2I targetPosition)
+	{
+        _guiLayer.HighlightTile(new Vector3I(targetPosition.X, targetPosition.Y, _level.GetTile(targetPosition).Height));
+    }
+
+	private void MoveSelectedPlayers(Vector2I targetPosition)
+	{
+        var startPosition = new Vector2I(
+			_selectedPlayers.Min(p => p.TargetGridPosition.X),
+			_selectedPlayers.Min(p => p.TargetGridPosition.Y));
+
+        var moves = new GridMoveHelper(_level).GetMovedFormation(
+            _selectedPlayers.Select(p => (p, p.TargetGridPosition)).ToList(),
+            targetPosition - startPosition);
+
+        foreach (var (player, destination) in moves)
+        {
+            player.MoveTo(destination);
+        }
+    }
+
+	private bool MousPositionOnGrid(out Vector2I targetPosition)
+	{
+        var mousePosition = GetLocalMousePosition();
+        GameMapLayer selectedMapLayer = null;
+
+        foreach (var mapLayer in _mapLayers)
+        {
+            targetPosition = mapLayer.LocalToMap(mousePosition - mapLayer.Position);
+            if (mapLayer.GetCellSourceId(targetPosition) == -1) continue;
+            if (mapLayer.LayerHeight > (selectedMapLayer?.LayerHeight ?? -1)) selectedMapLayer = mapLayer;
+        }
+
+		if (selectedMapLayer == null)
+		{
+			targetPosition = default;
+			return false;
+		}
+
+		targetPosition = selectedMapLayer.LocalToMap(mousePosition - selectedMapLayer.Position);
+		return true;
+    }
 
     private Vector2 GetPositionAdjusted(Vector2I gridPosition)
     {
