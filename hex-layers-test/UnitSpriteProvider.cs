@@ -7,9 +7,9 @@ using Godot;
 
 namespace HexLayersTest;
 
-public class PlayerSpriteProvider
+public class UnitSpriteProvider
 {
-    public static string GetCharacterSprite(Vector2 direction)
+    public static string GetSprite(Vector2 direction)
     {
         if (direction.X > 0)
         {

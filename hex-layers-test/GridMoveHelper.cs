@@ -1,3 +1,5 @@
+using Accord.Math;
+using Accord.Math.Optimization;
 using Godot;
 using HexLayersTest.Objects;
 using HexLayersTest.Shared;
@@ -14,24 +16,31 @@ public class GridMoveHelper
 {
     private readonly LevelArray _level;
 
+    private const double MaxDistance = double.PositiveInfinity;
+    private const float Alpha = 0.9f; // between 0 and 1
+
     public GridMoveHelper(
         LevelArray level)
     {
         _level = level;
     }
 
-    public Dictionary<T, Vector2I> GetMovedFormation<T>(List<(T Unit, Vector2I Position)> unitPositions, Vector2I transform) where T : class
+    public bool GetMovedFormation<T>(ref Dictionary<T, Vector2I> unitPositions, Vector2I transform) where T : class
     {
-        List<MovePlan<T>> movePlans = [];
-
-        foreach (var (unit, position) in unitPositions)
+        try
         {
-            movePlans.Add(new(unit, position + transform));
+            foreach (var (unit, position) in unitPositions)
+            {
+                unitPositions[unit] = new Vector2I(position.X + transform.X, position.Y + transform.Y);
+            }
+
+            AssignUnits(unitPositions);
+            return true;
         }
-
-        AssignUnits(movePlans);
-
-        return movePlans.Where(x => x.Unit != null).ToDictionary(x => x.Unit, x => x.GridPosition);
+        catch
+        { //TODO: catch only Munkres exceptions here
+            return false;
+        }
     }
     
     private class MovePlan<T>(T unit, Vector2I gridPosition) where T : class
@@ -40,30 +49,39 @@ public class GridMoveHelper
         public Vector2I GridPosition { get; set; } = gridPosition;
     }
 
-    private void AssignUnits<T>(List<MovePlan<T>> movePlans) where T : class
+    private void AssignUnits<T>(Dictionary<T, Vector2I> units) where T : class
     {
-        var units = movePlans;
-        var walkableTiles = GetViableTiles(movePlans.Select(x => x.GridPosition));
-
         double[][] cost = new double[units.Count][];
+        Dictionary<T, Dictionary<Vector2I, float>> distancesMap = [];
+        HashSet<Vector2I> viableTilesSet = [];
+        var centroid = new Vector2((float)units.Values.Average(u => u.X), (float)units.Values.Average(u => u.Y));
+
+        foreach (var (unit, position) in units)
+        {
+            var distances = ComputeDistances(position, units.Count, centroid, Alpha);
+            foreach (Vector2I tile in distances.Keys) viableTilesSet.Add(tile);
+            distancesMap[unit] = distances;
+        }
+
+        var viableTiles = viableTilesSet.ToArray();
+        var unitsList = units.Keys.ToList();
 
         for (int i = 0; i < units.Count; i++)
         {
-            cost[i] = new double[walkableTiles.Count];
+            cost[i] = new double[viableTiles.Length];
 
-            var distances = ComputeDistances(units[i].GridPosition);
+            var distances = distancesMap[unitsList[i]];
 
-            for (int j = 0; j < walkableTiles.Count; j++)
+            for (int j = 0; j < viableTiles.Length; j++)
             {
-                var tile = walkableTiles[j];
-                if (distances.TryGetValue(tile, out int dist))
+                var tile = viableTiles[j];
+                if (distances.TryGetValue(tile, out float dist))
                     cost[i][j] = dist;
                 else
-                    cost[i][j] = double.MaxValue;
+                    cost[i][j] = MaxDistance;
             }
         }
-
-        var munkres = new Accord.Math.Optimization.Munkres(cost);
+        var munkres = new Munkres(cost);
         munkres.Minimize();
 
         int[] assignment = munkres.Solution.Select(d => (int)d).ToArray();
@@ -73,15 +91,14 @@ public class GridMoveHelper
             int assignedIndex = assignment[i];
             if (assignedIndex != -1)
             {
-                units[i].GridPosition = walkableTiles[assignedIndex];
-                GD.Print(walkableTiles[assignedIndex]);
+                units[unitsList[i]] = viableTiles[assignedIndex];
             }
         }
     }
 
-    private Dictionary<Vector2I, int> ComputeDistances(Vector2I start)
+    private Dictionary<Vector2I, float> ComputeDistances(Vector2I start, int numTiles, Vector2 centroid, float alpha)
     {
-        var distances = new Dictionary<Vector2I, int>();
+        var distances = new Dictionary<Vector2I, float>();
         var visited = new HashSet<Vector2I>() { start };
         var queue = new Queue<(Vector2I Pos, int Dist)>();
         queue.Enqueue((start, 0));
@@ -89,14 +106,16 @@ public class GridMoveHelper
         while (queue.Count > 0)
         {
             var (pos, dist) = queue.Dequeue();
-            distances[pos] = dist;
+            float distToCentroid = Math.Abs(centroid.X - pos.X) + Math.Abs(centroid.Y - pos.Y);
+            if (TileIsViable(pos)) distances[pos] = dist + alpha * distToCentroid;
             foreach (var newPos in GetUnvisitedNeighbours(pos, visited))
             {
                 visited.Add(newPos);
                 queue.Enqueue((newPos, dist + 1));
             }
+            if (distances.Count >= numTiles) return distances;
         }
-        return distances;
+        throw new Exception("Not enough walkable tiles found!");//TODO: technically not needed, we could just leave this up to Munkres instead
     }
 
     private IEnumerable<Vector2I> GetUnvisitedNeighbours(Vector2I position, HashSet<Vector2I> visited)
@@ -109,29 +128,8 @@ public class GridMoveHelper
         return newPositions.Where(p => !visited.Contains(p));
     }
 
-    private List<Vector2I> GetViableTiles(IEnumerable<Vector2I> gridPositions, int marginSize = 2)
+    private bool TileIsViable(Vector2I gridPosition)
     {
-        int minX = _level.SizeX - 1, maxX = 0;
-        int minY = _level.SizeY - 1, maxY = 0;
-
-        foreach (var p in gridPositions)
-        {
-            if (p.X < minX) minX = p.X;
-            if (p.X > maxX) maxX = p.X;
-            if (p.Y < minY) minY = p.Y;
-            if (p.Y > maxY) maxY = p.Y;
-        }
-
-        minX = Math.Max(0, minX - marginSize);
-        maxX = Math.Min(_level.SizeX - 1, maxX + marginSize);
-        minY = Math.Max(0, minY - marginSize);
-        maxY = Math.Min(_level.SizeX - 1, maxY + marginSize);
-
-        var walkableTiles = new List<Vector2I>();
-        for (int x = minX; x <= maxX; x++)
-            for (int y = minY; y <= maxY; y++)
-                if (_level.GetTile(x, y).Navigable)
-                    walkableTiles.Add(new Vector2I(x, y));
-        return walkableTiles;
+        return _level.GetTile(gridPosition).Navigable; //TODO: check if tile is occupied here too
     }
 }
