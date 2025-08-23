@@ -83,7 +83,6 @@ public partial class GameMap : Node2D
 		AddChild(newUnit);
 		newUnit.Initialise(_level, _pathManager, gridPosition, GetPositionAdjusted);
         _units.Add(newUnit);
-    
     }
 
     public override void _Process(double delta)

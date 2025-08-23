@@ -17,7 +17,7 @@ public class GridMoveHelper
     private readonly LevelArray _level;
 
     private const double MaxDistance = double.PositiveInfinity;
-    private const float Alpha = 1.2f;
+    private const float Alpha = 0.9f; // between 0 and 1
 
     public GridMoveHelper(
         LevelArray level)

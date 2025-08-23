@@ -13,7 +13,6 @@ namespace HexLayersTest;
 public class PathManager
 {
     private readonly LevelArray _level;
-    //private readonly AStarGrid2D _aStarGrid;
     private readonly ImprovedAStar2DGrid _aStarGrid;
     private readonly TileReservationSet _reservations;
 
@@ -50,11 +49,6 @@ public class PathManager
         return ValidateGridPosition(position) && _reservations.Exchange(position, newPosition);
     }
 
-    public bool TileIsOccupied(Vector2I position)
-    {
-        return ValidateGridPosition(position) && _reservations.IsReserved(position);
-    }
-
     private bool PositionIsOutOfBounds(Vector2I position)
     {
         return position.X < 0 || position.Y < 0 || position.X >= _level.SizeX || position.Y >= _level.SizeY;
@@ -62,6 +56,6 @@ public class PathManager
 
     private bool ValidateGridPosition(Vector2I position)
     {
-        return !(PositionIsOutOfBounds(position) || !_level.GetTile(position).Navigable || TileIsOccupied(position));
+        return !PositionIsOutOfBounds(position) && _level.GetTile(position).Navigable;
     }
 }

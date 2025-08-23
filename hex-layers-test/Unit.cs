@@ -29,6 +29,7 @@ public partial class Unit : Node2D
 	private AnimatedSprite2D _sprite;
 
 	private const float MoveSpeed = 100.0f;
+	private const int MoveRange = 10;
 
 	public Unit()
 	{
@@ -49,11 +50,12 @@ public partial class Unit : Node2D
 		_targetGridPosition = gridPosition;
 		_targetPosition = GetPositionAdjusted(_targetGridPosition);
 		Position = _targetPosition;
+		_pathManager.RegisterStartPosition(this);
     }
 
     public override void _Process(double delta)
 	{
-		if (_targetPosition == Position && _gridPath.Count > 0)
+		if (_targetPosition == Position && _gridPath.Count > 0 && _pathManager.RegisterMove(this, _gridPath.Peek()))
 		{
 			_targetGridPosition = _gridPath.Dequeue();
             _targetPosition = GetPositionAdjusted(_targetGridPosition);
@@ -67,7 +69,7 @@ public partial class Unit : Node2D
 
 	public void MoveTo(Vector2I gridTo)
 	{
-		var path = _pathManager.GetPath(_targetGridPosition, gridTo).Skip(1); //_aStar.GetIdPath(_targetGridPosition, new Vector2I(gridTo.X, gridTo.Y)).Skip(1);
+		var path = _pathManager.GetPath(_targetGridPosition, gridTo).Skip(1).Take(MoveRange);
 
         foreach (var pos in path ?? []) _gridPath.Enqueue(pos);
 	}
