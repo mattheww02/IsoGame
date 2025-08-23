@@ -5,11 +5,23 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-public partial class Character : Node2D
+public partial class Unit : Node2D
 {
 	public event Func<Vector2I, Vector2> GetPositionAdjusted;
 
-    private Vector2 _targetPosition;
+	public Vector2I GridPosition => _targetGridPosition;
+	public Team Team 
+	{
+		get => _team;
+		set
+		{
+			if (_team != null) throw new InvalidOperationException($"{nameof(Team)} already has a value");
+			_team = value;
+		}
+	}
+
+	private Team _team;
+	private Vector2 _targetPosition;
 	private Vector2I _targetGridPosition;
     private readonly AStarGrid2D _aStarGrid;
 	private readonly Queue<Vector2I> _gridPath;
@@ -18,7 +30,7 @@ public partial class Character : Node2D
 
 	private const float MoveSpeed = 100.0f;
 
-	public Character()
+	public Unit()
 	{
 		_aStarGrid = new();
 		_gridPath = [];
@@ -46,8 +58,7 @@ public partial class Character : Node2D
 
 		_levelArray.ForEach((tile, x, y) =>
 		{
-			if (tile.WaterLevel > tile.Height) 
-				_aStarGrid.SetPointSolid(new Vector2I(x, y));
+			if (!tile.Navigable) _aStarGrid.SetPointSolid(new Vector2I(x, y));
 		});
     }
 
@@ -60,7 +71,7 @@ public partial class Character : Node2D
         }
 
 		var direction = _targetPosition - Position;
-		_sprite.Play(PlayerSpriteProvider.GetCharacterSprite(direction));
+		_sprite.Play(UnitSpriteProvider.GetSprite(direction));
 
         Position = Position.MoveToward(_targetPosition, MoveSpeed * (float)delta);
 	}

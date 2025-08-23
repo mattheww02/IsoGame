@@ -8,7 +8,7 @@ using System.Linq;
 public partial class GameMap : Node2D
 {
 	[Export] private PackedScene _mapLayerPackedScene;
-    [Export] private PackedScene _playerPackedScene;
+    [Export] private PackedScene _unitPackedScene;
     [Export] private GuiMapLayer _guiLayer;
     [Export] private int _tileSetSourceId;
 	
@@ -18,8 +18,8 @@ public partial class GameMap : Node2D
 	private readonly int _seed;
 
 	private LevelArray _level;
-	private readonly List<Player> _players;
-    private readonly MultiUnitSelection _selectedPlayers;
+	private readonly List<Unit> _units;
+    private readonly MultiUnitSelection _selectedUnits;
 
     private const int SizeX = 150, SizeY = 100, SizeZ = 10;
 	private const int MaxLandHeight = 8, GlobalWaterLevel = 4;
@@ -29,14 +29,14 @@ public partial class GameMap : Node2D
         _tileSpriteProvider = new();
 		_mapLayers = [];
 		_guiLayer = new();
-		_players = [];
-		_selectedPlayers = [];
+		_units = [];
+		_selectedUnits = [];
 		_seed = (int)(new Random().NextInt64(500));
     }
 
     public override void _Ready()
 	{
-		ArgumentNullException.ThrowIfNull(_playerPackedScene);
+		ArgumentNullException.ThrowIfNull(_unitPackedScene);
         ArgumentNullException.ThrowIfNull(_mapLayerPackedScene);
         ArgumentNullException.ThrowIfNull(_tileSetSourceId);
 
@@ -63,10 +63,10 @@ public partial class GameMap : Node2D
 			}
 		}
 
-		for (int i = 0; i < 10; i++) SpawnPlayer();
+		for (int i = 0; i < 100; i++) SpawnUnit();
     }
 
-	private void SpawnPlayer()
+	private void SpawnUnit()
 	{
 		var rng = new RandomNumberGenerator();
 		Vector2I gridPosition;
@@ -76,13 +76,14 @@ public partial class GameMap : Node2D
 			gridPosition = new Vector2I(rng.RandiRange(1, SizeX - 1), rng.RandiRange(1, SizeY - 1));
 		} while (!_level.GetTile(gridPosition).Navigable);
 		
-		var newPlayer = _playerPackedScene.Instantiate<Player>();
-		AddChild(newPlayer);
-		newPlayer.Initialise(_level, _mapLayers[0].TileSet.TileSize, gridPosition, GetPositionAdjusted);
-		_players.Add(newPlayer);
-	}
+		var newUnit = _unitPackedScene.Instantiate<Unit>();
+		AddChild(newUnit);
+		newUnit.Initialise(_level, _mapLayers[0].TileSet.TileSize, gridPosition, GetPositionAdjusted);
+        _units.Add(newUnit);
+    
+    }
 
-	public override void _Process(double delta)
+    public override void _Process(double delta)
 	{
         if (MousePositionOnGrid(out var targetPosition))
         {
@@ -90,7 +91,7 @@ public partial class GameMap : Node2D
             {
                 ShowRectSelected(_dragStart.Value, targetPosition);
             }
-            else if (_selectedPlayers.Count > 0)
+            else if (_selectedUnits.Count > 0)
             {
                 ShowSelectedUnitProjections(targetPosition);
             }
@@ -116,6 +117,8 @@ public partial class GameMap : Node2D
                 }
                 else
                 {
+                    GD.Print(_mapLayers.Count);
+                    GD.Print(MousePositionOnGrid(out var p));
                     if (_dragStart != null && MousePositionOnGrid(out var targetPosition))
                     {
                         _dragEnd = targetPosition;
@@ -123,19 +126,19 @@ public partial class GameMap : Node2D
                         float dist = (_dragEnd.Value - _dragStart.Value).Length();
                         if (dist < DragThreshold)
                         {
-                            if (_selectedPlayers.Count > 0)
+                            if (_selectedUnits.Count > 0)
                             {
-                                MoveSelectedPlayers(targetPosition);
-                                _selectedPlayers.Clear();
+                                MoveSelectedUnits(targetPosition);
+                                _selectedUnits.Clear();
                             }
                             else
                             {
-                                MultiSelectPlayers(targetPosition, targetPosition);
+                                MultiSelectUnits(targetPosition, targetPosition);
                             }
                         }
                         else
                         {
-                            MultiSelectPlayers(_dragStart.Value, _dragEnd.Value);
+                            MultiSelectUnits(_dragStart.Value, _dragEnd.Value);
                         }
                     }
 
@@ -146,28 +149,28 @@ public partial class GameMap : Node2D
         }
     }
 
-    private void MultiSelectPlayers(Vector2I start, Vector2I end)
+    private void MultiSelectUnits(Vector2I start, Vector2I end)
     {
-        _selectedPlayers.Clear();
+        _selectedUnits.Clear();
 
         int minX = Math.Min(start.X, end.X);
         int maxX = Math.Max(start.X, end.X);
         int minY = Math.Min(start.Y, end.Y);
         int maxY = Math.Max(start.Y, end.Y);
 
-        foreach (var player in _players)
+        foreach (var unit in _units)
         {
-            var pos = player.GridPosition;
+            var pos = unit.GridPosition;
             if (pos.X >= minX && pos.X <= maxX &&
                 pos.Y >= minY && pos.Y <= maxY)
             {
-                _selectedPlayers.Add(player);
+                _selectedUnits.Add(unit);
             }
         }
 
-        _guiLayer.HighlightTiles(_selectedPlayers.Select(p => new Vector3I(p.GridPosition.X, p.GridPosition.Y, _level.GetTile(p.GridPosition).Height)));
+        _guiLayer.HighlightTiles(_selectedUnits.Select(p => new Vector3I(p.GridPosition.X, p.GridPosition.Y, _level.GetTile(p.GridPosition).Height)));
 
-        GD.Print($"Players selected: {_selectedPlayers.Count}");
+        GD.Print($"Units selected: {_selectedUnits.Count}");
     }
 
     private void ShowTileSelected(Vector2I targetPosition)
@@ -188,7 +191,7 @@ public partial class GameMap : Node2D
     private void ShowSelectedUnitProjections(Vector2I targetPosition)
     { //TODO: check level bounds
         List<Vector3I> tilesToHighlight = [];
-        var formation = _selectedPlayers.GetFormation();
+        var formation = _selectedUnits.GetFormation();
         int w = formation.GetLength(0);
         int h = formation.GetLength(1);
         for (int x = 0; x < w; x++)
@@ -206,20 +209,20 @@ public partial class GameMap : Node2D
         _guiLayer.HighlightTiles(tilesToHighlight);
     }
 
-	private void MoveSelectedPlayers(Vector2I targetPosition)
+	private void MoveSelectedUnits(Vector2I targetPosition)
 	{
         _guiLayer.HighlightTiles([]);
         var startPosition = new Vector2I(
-			_selectedPlayers.Min(p => p.GridPosition.X),
-			_selectedPlayers.Min(p => p.GridPosition.Y));
+			_selectedUnits.Min(p => p.GridPosition.X),
+			_selectedUnits.Min(p => p.GridPosition.Y));
 
         var moves = new GridMoveHelper(_level).GetMovedFormation(
-            _selectedPlayers.Select(p => (p, p.GridPosition)).ToList(),
+            _selectedUnits.Select(p => (p, p.GridPosition)).ToList(),
             targetPosition - startPosition);
 
-        foreach (var (player, destination) in moves)
+        foreach (var (unit, destination) in moves)
         {
-            player.MoveTo(destination);
+            unit.MoveTo(destination);
         }
     }
 
@@ -235,13 +238,12 @@ public partial class GameMap : Node2D
             if (mapLayer.LayerHeight > (selectedMapLayer?.LayerHeight ?? -1)) selectedMapLayer = mapLayer;
         }
 
-		if (selectedMapLayer == null)
+        if (selectedMapLayer == null)
 		{
 			targetPosition = default;
 			return false;
 		}
-
-		targetPosition = selectedMapLayer.LocalToMap(mousePosition - selectedMapLayer.Position);
+        targetPosition = selectedMapLayer.LocalToMap(mousePosition - selectedMapLayer.Position);
 		return true;
     }
 
@@ -252,12 +254,12 @@ public partial class GameMap : Node2D
         return layer.MapToLocal(new Vector2I(gridPosition.X, gridPosition.Y)) + layer.Position;
     }
 
-    private GameMapLayer GetMapLayer(Player _, int z)
+    private GameMapLayer GetMapLayer(Unit _, int z)
 	{
 		return _mapLayers[z];
 	}
 
-	private int GetTileHeight(Player _, Vector2I gridPosition)
+	private int GetTileHeight(Unit _, Vector2I gridPosition)
 	{
 		return _level.GetTile(gridPosition.X, gridPosition.Y).Height;
 	}

@@ -1,12 +1,14 @@
-[gd_scene load_steps=4 format=3 uid="uid://nln0s8pcp6kn"]
+[gd_scene load_steps=5 format=3 uid="uid://nln0s8pcp6kn"]
 
 [ext_resource type="Script" uid="uid://b7b6efu31ygr1" path="res://GameMap.cs" id="1_1va4l"]
 [ext_resource type="PackedScene" uid="uid://chk4lrpwnkw7x" path="res://game_map_layer.tscn" id="2_5fonf"]
 [ext_resource type="PackedScene" uid="uid://cn5wdl4ivy040" path="res://gui_map_layer.tscn" id="3_5fonf"]
+[ext_resource type="PackedScene" uid="uid://ceesnl7jko7b8" path="res://unit.tscn" id="3_tw6lq"]
 
 [node name="GameMap" type="Node2D" node_paths=PackedStringArray("_guiLayer")]
 script = ExtResource("1_1va4l")
 _mapLayerPackedScene = ExtResource("2_5fonf")
+_unitPackedScene = ExtResource("3_tw6lq")
 _guiLayer = NodePath("GuiMapLayer")
 
 [node name="GuiMapLayer" parent="." instance=ExtResource("3_5fonf")]
