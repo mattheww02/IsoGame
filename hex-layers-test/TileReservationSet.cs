@@ -15,4 +15,5 @@ public class TileReservationSet
     public bool Reserve(Vector2I tile) => _reservations.Add(tile);
     public bool IsReserved(Vector2I tile) => _reservations.Contains(tile);
     public bool Release(Vector2I tile) => _reservations.Remove(tile);
+    public bool Exchange(Vector2I tileToRemove, Vector2I tileToAdd) => _reservations.RemoveAndAdd(tileToRemove, tileToAdd);
 }

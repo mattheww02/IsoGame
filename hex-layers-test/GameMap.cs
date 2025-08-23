@@ -18,6 +18,7 @@ public partial class GameMap : Node2D
 	private readonly int _seed;
 
 	private LevelArray _level;
+    private PathManager _pathManager;
 	private readonly List<Unit> _units;
     private readonly MultiUnitSelection _selectedUnits;
 
@@ -63,6 +64,8 @@ public partial class GameMap : Node2D
 			}
 		}
 
+        _pathManager = new(_level);
+
 		for (int i = 0; i < 100; i++) SpawnUnit();
     }
 
@@ -78,7 +81,7 @@ public partial class GameMap : Node2D
 		
 		var newUnit = _unitPackedScene.Instantiate<Unit>();
 		AddChild(newUnit);
-		newUnit.Initialise(_level, _mapLayers[0].TileSet.TileSize, gridPosition, GetPositionAdjusted);
+		newUnit.Initialise(_level, _pathManager, gridPosition, GetPositionAdjusted);
         _units.Add(newUnit);
     
     }
@@ -216,14 +219,17 @@ public partial class GameMap : Node2D
 			_selectedUnits.Min(p => p.GridPosition.X),
 			_selectedUnits.Min(p => p.GridPosition.Y));
 
-        var moves = new GridMoveHelper(_level).GetMovedFormation(
-            _selectedUnits.Select(p => (p, p.GridPosition)).ToList(),
-            targetPosition - startPosition);
+        var unitPositions = _selectedUnits.ToDictionary(u => u, u => u.GridPosition);
 
-        foreach (var (unit, destination) in moves)
+        if (new GridMoveHelper(_level).GetMovedFormation(ref unitPositions, targetPosition - startPosition))
         {
-            unit.MoveTo(destination);
+            foreach (var (unit, destination) in unitPositions)
+                unit.MoveTo(destination);
         }
+        else
+        {
+            GD.Print("Unit movement failed");
+        }       
     }
 
 	private bool MousePositionOnGrid(out Vector2I targetPosition)

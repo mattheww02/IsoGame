@@ -13,39 +13,55 @@ namespace HexLayersTest;
 public class PathManager
 {
     private readonly LevelArray _level;
-    private readonly TileReservationSet _globalReservations;
-    private readonly Dictionary<Team, TileReservationSet> _teamReservations;
+    //private readonly AStarGrid2D _aStarGrid;
+    private readonly ImprovedAStar2DGrid _aStarGrid;
+    private readonly TileReservationSet _reservations;
 
     public PathManager(LevelArray level)
     {
         _level = level;
-        _teamReservations = [];
+        _aStarGrid = new();
+        _reservations = new();
+
+        _aStarGrid.Initialize(_level.SizeX, _level.SizeY, (x, y) => _level.GetTile(x, y).Navigable, (x, y) => _level.GetTile(x, y).Height);
+        _aStarGrid.BuildGraph(1, 1, true, true);
+    }
+
+    public Vector2I[] GetPath(Vector2I start, Vector2I end)
+    {
+        return _aStarGrid.GetPathGrid(start, end);
     }
 
     public bool RegisterStartPosition(Unit unit)
     {
         var position = unit.GridPosition;
-        if (PositionIsOutOfBounds(position) || _level.GetTile(position).Navigable || TileIsOccupied(position) ||
-            !_teamReservations.TryGetValue(unit.Team, out var tileReservationSet)) return false;
+        return ValidateGridPosition(position) && _reservations.Reserve(position);
+    }
 
-        return tileReservationSet.Reserve(position);
+    public bool RegisterRemoval(Unit unit)
+    {
+        var position = unit.GridPosition;
+        return ValidateGridPosition(position) && _reservations.Release(position);
     }
 
     public bool RegisterMove(Unit unit, Vector2I newPosition)
     {
-        if (PositionIsOutOfBounds(newPosition) || _level.GetTile(newPosition).Navigable || TileIsOccupied(newPosition) ||
-            !_teamReservations.TryGetValue(unit.Team, out var tileReservationSet)) return false;
-
-        return tileReservationSet.Release(newPosition) && tileReservationSet.Reserve(newPosition); //TODO: consider race conditions
+        var position = unit.GridPosition;
+        return ValidateGridPosition(position) && _reservations.Exchange(position, newPosition);
     }
 
     public bool TileIsOccupied(Vector2I position)
     {
-        return _globalReservations.IsReserved(position);
+        return ValidateGridPosition(position) && _reservations.IsReserved(position);
     }
 
     private bool PositionIsOutOfBounds(Vector2I position)
     {
         return position.X < 0 || position.Y < 0 || position.X >= _level.SizeX || position.Y >= _level.SizeY;
+    }
+
+    private bool ValidateGridPosition(Vector2I position)
+    {
+        return !(PositionIsOutOfBounds(position) || !_level.GetTile(position).Navigable || TileIsOccupied(position));
     }
 }

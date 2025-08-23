@@ -11,6 +11,18 @@ public class BlockingHashSet<T> : IEnumerable<T>
     private readonly HashSet<T> _set = new();
     private readonly object _lock = new();
 
+    public bool RemoveAndAdd(T itemToRemove, T itemToAdd)
+    {
+        lock (_lock)
+        {
+            if (!_set.Contains(itemToRemove) || _set.Contains(itemToAdd)) return false;
+            _set.Remove(itemToRemove);
+            _set.Add(itemToAdd);
+            Monitor.PulseAll(_lock);
+            return true;
+        }
+    }
+
     public bool Add(T item)
     {
         lock (_lock)

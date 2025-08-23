@@ -23,16 +23,15 @@ public partial class Unit : Node2D
 	private Team _team;
 	private Vector2 _targetPosition;
 	private Vector2I _targetGridPosition;
-    private readonly AStarGrid2D _aStarGrid;
 	private readonly Queue<Vector2I> _gridPath;
-	private LevelArray _levelArray;
+	private LevelArray _level;
+	private PathManager _pathManager;
 	private AnimatedSprite2D _sprite;
 
 	private const float MoveSpeed = 100.0f;
 
 	public Unit()
 	{
-		_aStarGrid = new();
 		_gridPath = [];
 	}
 
@@ -41,25 +40,15 @@ public partial class Unit : Node2D
         _sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
     }
 
-	public void Initialise(LevelArray levelArray, Vector2I tileSize, Vector2I gridPosition, Func<Vector2I, Vector2> getPositionAdjusted)
+	public void Initialise(LevelArray levelArray, PathManager pathManager, Vector2I gridPosition, Func<Vector2I, Vector2> getPositionAdjusted)
 	{
-		_levelArray = levelArray;
+		_level = levelArray;
+		_pathManager = pathManager;
 		GetPositionAdjusted += getPositionAdjusted;
 		
 		_targetGridPosition = gridPosition;
 		_targetPosition = GetPositionAdjusted(_targetGridPosition);
 		Position = _targetPosition;
-
-        _aStarGrid.Region = new Rect2I(0, 0, levelArray.SizeX, levelArray.SizeY);
-        _aStarGrid.CellSize = tileSize;
-        _aStarGrid.CellShape = AStarGrid2D.CellShapeEnum.IsometricDown;
-        _aStarGrid.DiagonalMode = AStarGrid2D.DiagonalModeEnum.OnlyIfNoObstacles;
-        _aStarGrid.Update();
-
-		_levelArray.ForEach((tile, x, y) =>
-		{
-			if (!tile.Navigable) _aStarGrid.SetPointSolid(new Vector2I(x, y));
-		});
     }
 
     public override void _Process(double delta)
@@ -78,8 +67,8 @@ public partial class Unit : Node2D
 
 	public void MoveTo(Vector2I gridTo)
 	{
-		var path = _aStarGrid.GetIdPath(_targetGridPosition, new Vector2I(gridTo.X, gridTo.Y)).Skip(1);
+		var path = _pathManager.GetPath(_targetGridPosition, gridTo).Skip(1); //_aStar.GetIdPath(_targetGridPosition, new Vector2I(gridTo.X, gridTo.Y)).Skip(1);
 
-		foreach (var pos in path ?? []) _gridPath.Enqueue(pos);
+        foreach (var pos in path ?? []) _gridPath.Enqueue(pos);
 	}
 }
