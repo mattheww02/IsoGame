@@ -1,6 +1,7 @@
 using Godot;
 using HexLayersTest;
 using HexLayersTest.Objects;
+using LibNoise.Combiner;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -67,6 +68,35 @@ public partial class GameMap : Node2D
         _pathManager = new(_level);
 
 		for (int i = 0; i < 100; i++) SpawnUnit();
+
+
+
+        //SubViewport viewport = new SubViewport();
+        //viewport.Size = new Vector2I(SizeX, SizeY); // in tiles or pixels
+        //viewport.TransparentBg = true;
+        //// Optionally, set viewport render target
+        //viewport.RenderTargetUpdateMode = SubViewport.UpdateMode.Always;
+        for (int z = 0; z < SizeZ; z++)
+        {
+            var layer = _mapLayers[z];
+            var mat = (ShaderMaterial)layer.Material;
+            layer.Modulate = layer.Modulate.Darkened(0.1f * (z % 2 - 1));
+            //var mat = (ShaderMaterial)layer.Material;
+            //mat.SetShaderParameter("tile_height", (float)z / (float)SizeZ);
+        }
+        //Image viewportImage = viewport.GetTexture().GetImage();
+        //viewportImage.Convert(Image.Format.Rf); // single-channel red for heightmap
+        ////ImageTexture heightTexture = ImageTexture.CreateFromImage(viewportImage);
+        //Sprite2D shadowSprite = GetNode<Sprite2D>("../../ShadowSprite");
+        //var heightTexture = GenerateHeightmapTexture(_level, SizeX, SizeY, MaxLandHeight);
+        //ShaderMaterial shaderMat = (ShaderMaterial)shadowSprite.Material;
+        //shaderMat.SetShaderParameter("heightmap", heightTexture);
+        //shaderMat.SetShaderParameter("mapWidth", SizeX);
+        //shaderMat.SetShaderParameter("mapHeight", SizeY);
+        //shaderMat.SetShaderParameter("steps", 10);
+        //shaderMat.SetShaderParameter("zangle", 0.3f);
+        //shaderMat.SetShaderParameter("light_dir", new Vector2(-1f, -0.5f));
+        //shaderMat.SetShaderParameter("shadow_strength", 0.2f);
     }
 
 	private void SpawnUnit()
@@ -268,4 +298,25 @@ public partial class GameMap : Node2D
 	{
 		return _level.GetTile(gridPosition.X, gridPosition.Y).Height;
 	}
+
+
+
+
+    public ImageTexture GenerateHeightmapTexture(LevelArray level, int mapWidth, int mapHeight, int maxHeight)
+    {
+        Image image = Image.CreateEmpty(mapWidth, mapHeight, false, Image.Format.Rf); // single-channel red
+
+        for (int y = 0; y < mapHeight; y++)
+        {
+            for (int x = 0; x < mapWidth; x++)
+            {
+                float h = Mathf.Clamp(level.GetTile(x, y).Height / (float)maxHeight, 0.0f, 1.0f);
+                image.SetPixel(x, y, new Color(h, 0, 0, 1));
+            }
+        }
+
+        ImageTexture tex = ImageTexture.CreateFromImage(image);
+        //tex.Flags &= ~(uint)Texture.FlagsEnum.Filter; // nearest filtering for discrete tiles
+        return tex;
+    }
 }

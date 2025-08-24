@@ -12,3 +12,9 @@ _unitPackedScene = ExtResource("3_tw6lq")
 _guiLayer = NodePath("GuiMapLayer")
 
 [node name="GuiMapLayer" parent="." instance=ExtResource("3_5fonf")]
+
+[node name="DirectionalLight2D" type="DirectionalLight2D" parent="."]
+visible = false
+rotation = -0.959931
+color = Color(0.956863, 0.729412, 0.313726, 0.564706)
+shadow_enabled = true

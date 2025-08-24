@@ -1,0 +1,18 @@
+[gd_scene load_steps=4 format=3 uid="uid://bh0j0b5cvmoru"]
+
+[ext_resource type="PackedScene" uid="uid://nln0s8pcp6kn" path="res://game_map.tscn" id="1_ktqrk"]
+[ext_resource type="Shader" uid="uid://cmi0leg7864l2" path="res://viewport.gdshader" id="2_85vdf"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fkvck"]
+shader = ExtResource("2_85vdf")
+shader_parameter/zangle = 0.3
+shader_parameter/light_dir = Vector2(-1, -0.5)
+shader_parameter/shadow_strength = 0.2
+shader_parameter/steps = 10
+
+[node name="SubViewport" type="SubViewport"]
+
+[node name="GameMap" parent="." instance=ExtResource("1_ktqrk")]
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+material = SubResource("ShaderMaterial_fkvck")
