@@ -22,7 +22,10 @@ public partial class GameMap : Node2D
 	private LevelArray _level;
     private PathManager _pathManager;
 	private readonly List<Unit> _units;
+    private readonly Dictionary<Unit, Vector2I> _unitDestinations;
     private readonly MultiUnitSelection _selectedUnits;
+
+    private bool _isPlayerTurn;
 
     private const int SizeX = 150, SizeY = 100, SizeZ = 10;
 	private const int MaxLandHeight = 8, GlobalWaterLevel = 4;
@@ -32,6 +35,7 @@ public partial class GameMap : Node2D
         _tileSpriteProvider = new();
 		_mapLayers = [];
 		_units = [];
+        _unitDestinations = [];
 		_selectedUnits = [];
 		_seed = (int)(new Random().NextInt64(500));
     }
@@ -70,6 +74,8 @@ public partial class GameMap : Node2D
         _pathManager = new(_level);
 
 		for (int i = 0; i < 100; i++) SpawnUnit();
+
+        _isPlayerTurn = true;
     }
 
 	private void SpawnUnit()
@@ -154,6 +160,17 @@ public partial class GameMap : Node2D
         }
     }
 
+    public void PlayerEndTurn()
+    {
+        if (!_isPlayerTurn) return;
+        //_isPlayerTurn = false; //TODO: add this back when enemy turns are able to be completed
+        GD.Print("Player turn ended");
+        foreach ((Unit unit, Vector2I position) in _unitDestinations)
+        {
+            unit.MoveTo(position);
+        }
+    }
+
     private void MultiSelectUnits(Vector2I start, Vector2I end)
     {
         _selectedUnits.Clear();
@@ -226,7 +243,7 @@ public partial class GameMap : Node2D
         if (new GridMoveHelper(_level).GetMovedFormation(ref unitPositions, targetPosition - startPosition))
         {
             foreach (var (unit, destination) in unitPositions)
-                unit.MoveTo(destination);
+                _unitDestinations[unit] = destination;
         }
         else
         {

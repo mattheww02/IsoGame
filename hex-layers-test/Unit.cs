@@ -29,7 +29,7 @@ public partial class Unit : Node2D
 	private AnimatedSprite2D _sprite;
 
 	private const float MoveSpeed = 100.0f;
-	private const int MoveRange = 10;
+	private const int MoveRange = 100;
 
 	public Unit()
 	{

@@ -1,12 +1,19 @@
-[gd_scene load_steps=3 format=3 uid="uid://c23cflepupeeh"]
+[gd_scene load_steps=5 format=3 uid="uid://c23cflepupeeh"]
 
+[ext_resource type="Script" uid="uid://bvj355xykmc0a" path="res://Main.cs" id="1_1bvp3"]
 [ext_resource type="PackedScene" uid="uid://nln0s8pcp6kn" path="res://game_map.tscn" id="2_h2yge"]
+[ext_resource type="PackedScene" uid="uid://dvdkmt3c6p8e8" path="res://hud.tscn" id="3_h2yge"]
 [ext_resource type="Script" uid="uid://bptrvkdpfslh8" path="res://GameCamera.cs" id="4_1bvp3"]
 
-[node name="Main" type="Node2D"]
+[node name="Main" type="Node2D" node_paths=PackedStringArray("_gameMap", "_hud")]
+script = ExtResource("1_1bvp3")
+_gameMap = NodePath("GameMap")
+_hud = NodePath("HUD")
 
 [node name="GameCamera" type="Camera2D" parent="."]
 position = Vector2(87, 680)
 script = ExtResource("4_1bvp3")
 
 [node name="GameMap" parent="." instance=ExtResource("2_h2yge")]
+
+[node name="HUD" parent="." instance=ExtResource("3_h2yge")]
