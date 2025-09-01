@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 
 public partial class GameMap : Node2D
 {
@@ -21,12 +22,14 @@ public partial class GameMap : Node2D
 
 	private LevelArray _level;
     private PathManager _pathManager;
-	private readonly List<Unit> _units;
+    private EnemyCombatManager _enemyCombatManager;
+    private readonly List<Unit> _units;
     private readonly Dictionary<Unit, Vector2I> _unitDestinations;
     private readonly MultiUnitSelection _selectedUnits;
 
+    private readonly List<Team> _teams;
     private bool _isPlayerTurn;
-
+    
     private const int SizeX = 150, SizeY = 100, SizeZ = 10;
 	private const int MaxLandHeight = 8, GlobalWaterLevel = 4;
 
@@ -35,6 +38,7 @@ public partial class GameMap : Node2D
         _tileSpriteProvider = new();
 		_mapLayers = [];
 		_units = [];
+        _teams = [];
         _unitDestinations = [];
 		_selectedUnits = [];
 		_seed = (int)(new Random().NextInt64(500));
@@ -46,39 +50,60 @@ public partial class GameMap : Node2D
         ArgumentNullException.ThrowIfNull(_mapLayerPackedScene);
         ArgumentNullException.ThrowIfNull(_tileSetSourceId);
 
-        _level = new LevelGenerator(SizeX, SizeY, MaxLandHeight, globalWaterLevel: GlobalWaterLevel).GenerateLevel();
-		for (int i = 0; i < SizeZ; i++)
-		{
-			var mapLayer = _mapLayerPackedScene.Instantiate<GameMapLayer>();
-			mapLayer.LayerHeight = i;
-            _mapLayers.Add(mapLayer);
-			AddChild(mapLayer);
-        }
-
-        for (int x = 0; x < SizeX; x++)
-		{
-			for (int y = 0; y < SizeY; y++)
-			{
-				LevelTile tile = _level.GetTile(x, y);
-				for (int z = 0; z < SizeZ; z++)
-				{
-					var atlasCoords = _tileSpriteProvider.GetAtlasCoords(tile, z);
-					if (atlasCoords == null) continue;
-                    _mapLayers[z].SetCell(new Vector2I(x, y), _tileSetSourceId, atlasCoords);
-                }
-			}
-		}
+        _level = new LevelGenerator(SizeX, SizeY, MaxLandHeight, 0, GlobalWaterLevel).GenerateLevel();
+        CreateTileMapLayers();
 
         _shadowMap.Initialise(SizeZ, _level);
 
         _pathManager = new(_level);
 
-		for (int i = 0; i < 100; i++) SpawnUnit();
+        CreateTeams();
+        _enemyCombatManager = new(_level, _teams);
 
         _isPlayerTurn = true;
     }
 
-	private void SpawnUnit()
+    private void CreateTileMapLayers()
+    {
+        for (int i = 0; i < SizeZ; i++)
+        {
+            var mapLayer = _mapLayerPackedScene.Instantiate<GameMapLayer>();
+            mapLayer.LayerHeight = i;
+            _mapLayers.Add(mapLayer);
+            AddChild(mapLayer);
+        }
+
+        for (int x = 0; x < SizeX; x++)
+        {
+            for (int y = 0; y < SizeY; y++)
+            {
+                LevelTile tile = _level.GetTile(x, y);
+                for (int z = 0; z < SizeZ; z++)
+                {
+                    var atlasCoords = _tileSpriteProvider.GetAtlasCoords(tile, z);
+                    if (atlasCoords == null) continue;
+                    _mapLayers[z].SetCell(new Vector2I(x, y), _tileSetSourceId, atlasCoords);
+                }
+            }
+        }
+    }
+
+    private void CreateTeams()
+    {
+        _teams.Add(new()
+        {
+            GuiColour = Colors.Blue,
+            IsPlayerControlled = true,
+        });
+        _teams.Add(new()
+        {
+            GuiColour = Colors.Red,
+        });
+        for (int i = 0; i < 50; i++) SpawnUnit(_teams[0]);
+        for (int i = 0; i < 50; i++) SpawnUnit(_teams[1]);
+    }
+
+	private void SpawnUnit(Team team)
 	{
 		var rng = new RandomNumberGenerator();
 		Vector2I gridPosition;
@@ -91,6 +116,7 @@ public partial class GameMap : Node2D
 		var newUnit = _unitPackedScene.Instantiate<Unit>();
 		AddChild(newUnit);
 		newUnit.Initialise(_level, _pathManager, gridPosition, GetPositionAdjusted);
+        team.AddUnit(newUnit);
         _units.Add(newUnit);
     }
 
@@ -160,14 +186,41 @@ public partial class GameMap : Node2D
         }
     }
 
-    public void PlayerEndTurn()
+    Task<Dictionary<Unit, Vector2I>> _cpuMoveTask;
+
+    public void PlayerTurnStart()
     {
-        if (!_isPlayerTurn) return;
-        //_isPlayerTurn = false; //TODO: add this back when enemy turns are able to be completed
-        GD.Print("Player turn ended");
-        foreach ((Unit unit, Vector2I position) in _unitDestinations)
+        _isPlayerTurn = true;
+
+        _cpuMoveTask = _enemyCombatManager.GenerateMovesAsync();
+    }
+
+    public async void PlayerEndTurn()
+    {
+        try
         {
-            unit.MoveTo(position);
+            if (!_isPlayerTurn)
+            {
+                PlayerTurnStart();
+                return;
+            }
+            _isPlayerTurn = false;
+            GD.Print("Player turn ended");
+            foreach ((Unit unit, Vector2I position) in _unitDestinations)
+            {
+                unit.MoveTo(position);
+            }
+
+            _cpuMoveTask ??= _enemyCombatManager.GenerateMovesAsync();
+            var cpuMoves = await _cpuMoveTask;
+            foreach ((Unit unit, Vector2I position) in cpuMoves)
+            {
+                unit.MoveTo(position);
+            }
+        }
+        catch (Exception ex)
+        {
+            GD.PrintErr(ex);
         }
     }
 
@@ -180,7 +233,7 @@ public partial class GameMap : Node2D
         int minY = Math.Min(start.Y, end.Y);
         int maxY = Math.Max(start.Y, end.Y);
 
-        foreach (var unit in _units)
+        foreach (var unit in _units.Where(u => u.Team.IsPlayerControlled)) //TODO: do this faster
         {
             var pos = unit.GridPosition;
             if (pos.X >= minX && pos.X <= maxX &&
