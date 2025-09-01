@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://cdodlund5wx02"]
+
+[ext_resource type="Script" uid="uid://cwcis2vsw5wc7" path="res://GuiMap.cs" id="1_wtpew"]
+[ext_resource type="PackedScene" uid="uid://cn5wdl4ivy040" path="res://gui_map_layer.tscn" id="2_wtpew"]
+
+[node name="GuiMap" type="Node2D" node_paths=PackedStringArray("_evenLayer", "_oddLayer")]
+script = ExtResource("1_wtpew")
+_evenLayer = NodePath("EvenLayer")
+_oddLayer = NodePath("OddLayer")
+
+[node name="EvenLayer" parent="." instance=ExtResource("2_wtpew")]
+
+[node name="OddLayer" parent="." instance=ExtResource("2_wtpew")]

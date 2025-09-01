@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3 uid="uid://c7iyc60jgjskm"]
+
+[ext_resource type="PackedScene" uid="uid://6hdahgdg7gdh" path="res://shadow_map_layer.tscn" id="1_8uddk"]
+[ext_resource type="Script" uid="uid://duec8cyfudayc" path="res://ShadowMap.cs" id="1_c7qaa"]
+
+[node name="ShadowMap" type="BackBufferCopy"]
+copy_mode = 2
+script = ExtResource("1_c7qaa")
+_shadowMapLayerPackedScene = ExtResource("1_8uddk")
