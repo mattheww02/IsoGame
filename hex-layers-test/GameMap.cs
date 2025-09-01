@@ -1,6 +1,7 @@
 using Godot;
 using HexLayersTest;
 using HexLayersTest.Objects;
+using HexLayersTest.Units;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +14,7 @@ public partial class GameMap : Node2D
     [Export] private PackedScene _unitPackedScene;
     [Export] private GuiMap _guiMap;
     [Export] private ShadowMap _shadowMap;
+    [Export] private UnitFactory _unitFactory;
     [Export] private int _tileSetSourceId;
 	
 	private readonly List<GameMapLayer> _mapLayers;
@@ -112,10 +114,11 @@ public partial class GameMap : Node2D
 		{
 			gridPosition = new Vector2I(rng.RandiRange(1, SizeX - 1), rng.RandiRange(1, SizeY - 1));
 		} while (!_level.GetTile(gridPosition).Navigable);
-		
-		var newUnit = _unitPackedScene.Instantiate<Unit>();
-		AddChild(newUnit);
-		newUnit.Initialise(_level, _pathManager, gridPosition, GetPositionAdjusted);
+
+        Unit newUnit = rng.Randf() > 0.5f
+            ? _unitFactory.CreateUnit<BasicMeleeFighter>()
+            : _unitFactory.CreateUnit<BasicRangedFighter>();
+		newUnit.Initialise(_pathManager, gridPosition, GetPositionAdjusted);
         team.AddUnit(newUnit);
         _units.Add(newUnit);
     }

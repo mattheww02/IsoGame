@@ -7,9 +7,22 @@ using Godot;
 
 namespace HexLayersTest;
 
-public class UnitSpriteProvider
+public partial class UnitSpriteProvider : Node
 {
-    public static string GetSprite(Vector2 direction)
+    [Export] private PackedScene _goldenRetrieverSpritePackedScene;
+    [Export] private PackedScene _catSpritePackedScene;
+
+    public AnimatedSprite2D GetAnimatedSprite(Unit unit)
+    {
+        return (unit.UnitSpriteType switch
+        {
+            Enums.UnitSpriteType.GoldenRetriever => _goldenRetrieverSpritePackedScene,
+            Enums.UnitSpriteType.Cat => _catSpritePackedScene,
+            _ => throw new NotImplementedException()
+        }).Instantiate<AnimatedSprite2D>();
+    }
+
+    public static string GetSpriteByDirection(Vector2 direction)
     {
         if (direction.X > 0)
         {

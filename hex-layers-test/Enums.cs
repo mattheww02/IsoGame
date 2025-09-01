@@ -31,4 +31,10 @@ public static class Enums
         HalfBlockSouth,
         HalfBlockNorth
     }
+
+    public enum UnitSpriteType
+    {
+        GoldenRetriever,
+        Cat,
+    }
 }
