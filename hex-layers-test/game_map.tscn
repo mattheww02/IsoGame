@@ -1,19 +1,23 @@
-[gd_scene load_steps=6 format=3 uid="uid://nln0s8pcp6kn"]
+[gd_scene load_steps=7 format=3 uid="uid://nln0s8pcp6kn"]
 
 [ext_resource type="Script" uid="uid://b7b6efu31ygr1" path="res://GameMap.cs" id="1_1va4l"]
 [ext_resource type="PackedScene" uid="uid://chk4lrpwnkw7x" path="res://game_map_layer.tscn" id="2_5fonf"]
 [ext_resource type="PackedScene" uid="uid://ceesnl7jko7b8" path="res://unit.tscn" id="3_tw6lq"]
 [ext_resource type="PackedScene" uid="uid://c7iyc60jgjskm" path="res://shadow_map.tscn" id="5_55amd"]
 [ext_resource type="PackedScene" uid="uid://cdodlund5wx02" path="res://gui_map.tscn" id="5_hrtji"]
+[ext_resource type="PackedScene" uid="uid://b155keu24mylp" path="res://unit_factory.tscn" id="6_55amd"]
 
-[node name="GameMap" type="Node2D" node_paths=PackedStringArray("_guiMap", "_shadowMap")]
+[node name="GameMap" type="Node2D" node_paths=PackedStringArray("_guiMap", "_shadowMap", "_unitFactory")]
 script = ExtResource("1_1va4l")
 _mapLayerPackedScene = ExtResource("2_5fonf")
 _unitPackedScene = ExtResource("3_tw6lq")
 _guiMap = NodePath("GuiMap")
 _shadowMap = NodePath("ShadowMap")
+_unitFactory = NodePath("UnitFactory")
 
 [node name="GuiMap" parent="." instance=ExtResource("5_hrtji")]
 
 [node name="ShadowMap" parent="." instance=ExtResource("5_55amd")]
 y_sort_enabled = true
+
+[node name="UnitFactory" parent="." instance=ExtResource("6_55amd")]

@@ -1,0 +1,15 @@
+[gd_scene load_steps=5 format=3 uid="uid://b155keu24mylp"]
+
+[ext_resource type="Script" uid="uid://lh3u6ltnc4a1" path="res://UnitFactory.cs" id="1_ypa5p"]
+[ext_resource type="Script" uid="uid://l16ob8ewm0mq" path="res://UnitSpriteProvider.cs" id="2_yu6cw"]
+[ext_resource type="PackedScene" uid="uid://i8wbwd2yqcp5" path="res://UnitSprites/golden_retriever_sprite.tscn" id="3_yu6cw"]
+[ext_resource type="PackedScene" uid="uid://dqo778up3qhuq" path="res://UnitSprites/cat_sprite.tscn" id="4_vs0sn"]
+
+[node name="UnitFactory" type="Node" node_paths=PackedStringArray("_unitSpriteProvider")]
+script = ExtResource("1_ypa5p")
+_unitSpriteProvider = NodePath("UnitSpriteProvider")
+
+[node name="UnitSpriteProvider" type="Node" parent="."]
+script = ExtResource("2_yu6cw")
+_goldenRetrieverSpritePackedScene = ExtResource("3_yu6cw")
+_catSpritePackedScene = ExtResource("4_vs0sn")
