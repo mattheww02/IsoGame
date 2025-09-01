@@ -4,12 +4,14 @@ using HexLayersTest.Objects;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 public partial class GameMap : Node2D
 {
 	[Export] private PackedScene _mapLayerPackedScene;
     [Export] private PackedScene _unitPackedScene;
-    [Export] private GuiMapLayer _guiLayer;
+    [Export] private GuiMap _guiMap;
+    [Export] private ShadowMap _shadowMap;
     [Export] private int _tileSetSourceId;
 	
 	private readonly List<GameMapLayer> _mapLayers;
@@ -29,7 +31,6 @@ public partial class GameMap : Node2D
 	{
         _tileSpriteProvider = new();
 		_mapLayers = [];
-		_guiLayer = new();
 		_units = [];
 		_selectedUnits = [];
 		_seed = (int)(new Random().NextInt64(500));
@@ -48,7 +49,7 @@ public partial class GameMap : Node2D
 			mapLayer.LayerHeight = i;
             _mapLayers.Add(mapLayer);
 			AddChild(mapLayer);
-		}
+        }
 
         for (int x = 0; x < SizeX; x++)
 		{
@@ -63,6 +64,8 @@ public partial class GameMap : Node2D
                 }
 			}
 		}
+
+        _shadowMap.Initialise(SizeZ, _level);
 
         _pathManager = new(_level);
 
@@ -170,14 +173,14 @@ public partial class GameMap : Node2D
             }
         }
 
-        _guiLayer.HighlightTiles(_selectedUnits.Select(p => new Vector3I(p.GridPosition.X, p.GridPosition.Y, _level.GetTile(p.GridPosition).Height)));
+        _guiMap.HighlightTiles(_selectedUnits.Select(p => new Vector3I(p.GridPosition.X, p.GridPosition.Y, _level.GetTile(p.GridPosition).Height)));
 
         GD.Print($"Units selected: {_selectedUnits.Count}");
     }
 
     private void ShowTileSelected(Vector2I targetPosition)
 	{
-        _guiLayer.HighlightTiles([new Vector3I(targetPosition.X, targetPosition.Y, _level.GetTile(targetPosition).Height)]);
+        _guiMap.HighlightTiles([new Vector3I(targetPosition.X, targetPosition.Y, _level.GetTile(targetPosition).Height)]);
     }
 
     private void ShowRectSelected(Vector2I position1, Vector2I position2)
@@ -187,7 +190,7 @@ public partial class GameMap : Node2D
             for (int  y = Math.Min(position1.Y, position2.Y); y <= Math.Max(position1.Y, position2.Y); y++)
                 tilesToHighlight.Add(new Vector3I(x, y, _level.GetTile(x, y).Height));
 
-        _guiLayer.HighlightTiles(tilesToHighlight);
+        _guiMap.HighlightTiles(tilesToHighlight);
     }
 
     private void ShowSelectedUnitProjections(Vector2I targetPosition)
@@ -208,12 +211,12 @@ public partial class GameMap : Node2D
                 }
             }
         }
-        _guiLayer.HighlightTiles(tilesToHighlight);
+        _guiMap.HighlightTiles(tilesToHighlight);
     }
 
 	private void MoveSelectedUnits(Vector2I targetPosition)
 	{
-        _guiLayer.HighlightTiles([]);
+        _guiMap.HighlightTiles([]);
         var startPosition = new Vector2I(
 			_selectedUnits.Min(p => p.GridPosition.X),
 			_selectedUnits.Min(p => p.GridPosition.Y));

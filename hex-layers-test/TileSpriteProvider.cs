@@ -16,12 +16,12 @@ public class TileSpriteProvider
 
     private readonly Dictionary<TileTypeVariant, Vector2I[]> _atlasCoordsMap = new()
     {
-        [new TileTypeVariant(Enums.TileType.Grass, Enums.TileVariant.FullBlock)] = [new Vector2I(0, 0)],
-        [new TileTypeVariant(Enums.TileType.Grass, Enums.TileVariant.HalfBlockLower)] = [new Vector2I(0, 0)],
-        [new TileTypeVariant(Enums.TileType.Rock, Enums.TileVariant.FullBlock)] = [new Vector2I(0, 3)],
-        [new TileTypeVariant(Enums.TileType.Rock, Enums.TileVariant.HalfBlockLower)] = [new Vector2I(0, 3)],
-        [new TileTypeVariant(Enums.TileType.Sand, Enums.TileVariant.FullBlock)] = [new Vector2I(0, 6)],
-        [new TileTypeVariant(Enums.TileType.Sand, Enums.TileVariant.HalfBlockLower)] = [new Vector2I(0, 6)],
+        [new TileTypeVariant(Enums.TileType.Grass, Enums.TileVariant.FullBlock)] = [new Vector2I(1, 0)],
+        [new TileTypeVariant(Enums.TileType.Grass, Enums.TileVariant.HalfBlockLower)] = [new Vector2I(1, 0)],
+        [new TileTypeVariant(Enums.TileType.Rock, Enums.TileVariant.FullBlock)] = [new Vector2I(1, 3)],
+        [new TileTypeVariant(Enums.TileType.Rock, Enums.TileVariant.HalfBlockLower)] = [new Vector2I(1, 3)],
+        [new TileTypeVariant(Enums.TileType.Sand, Enums.TileVariant.FullBlock)] = [new Vector2I(1, 6)],
+        [new TileTypeVariant(Enums.TileType.Sand, Enums.TileVariant.HalfBlockLower)] = [new Vector2I(1, 6)],
     };
 
     public Vector2I? GetAtlasCoords(LevelTile levelTile, int z)
