@@ -11,6 +11,7 @@ public class Team
 {
     public Color GuiColour { get; set; }
     public bool IsPlayerControlled { get; set; }
+    public int Stock { get; private set; }
 
     private readonly HashSet<Unit> _units;
 
@@ -27,6 +28,7 @@ public class Team
         {
             unit.Team = this;
             unit.Modulate = GuiColour;
+            Stock += unit.Stock;
             return true;
         }
         return false;
@@ -38,6 +40,7 @@ public class Team
         {
             unit.Team = null;
             unit.Modulate = Colors.White;
+            Stock -= unit.Stock;
             return true;
         }
         return false;

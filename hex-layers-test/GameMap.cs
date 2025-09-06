@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 
 public partial class GameMap : Node2D
 {
+    public event Action<bool, int> RemainingStockChanged;
+
 	[Export] private PackedScene _mapLayerPackedScene;
     [Export] private PackedScene _unitPackedScene;
     [Export] private GuiMap _guiMap;
@@ -26,6 +28,7 @@ public partial class GameMap : Node2D
     private PathManager _pathManager;
     private EnemyCombatManager _enemyCombatManager;
     private readonly List<Unit> _units;
+    private readonly HashSet<Unit> _killedUnits;
     private readonly Dictionary<Unit, Vector2I> _unitDestinations;
     private readonly MultiUnitSelection _selectedUnits;
 
@@ -40,15 +43,16 @@ public partial class GameMap : Node2D
         _tileSpriteProvider = new();
 		_mapLayers = [];
 		_units = [];
+        _killedUnits = [];
         _teams = [];
         _unitDestinations = [];
 		_selectedUnits = [];
 		_seed = (int)(new Random().NextInt64(500));
     }
 
-    public override void _Ready()
-	{
-		ArgumentNullException.ThrowIfNull(_unitPackedScene);
+    public void Initialise()
+    {
+        ArgumentNullException.ThrowIfNull(_unitPackedScene);
         ArgumentNullException.ThrowIfNull(_mapLayerPackedScene);
         ArgumentNullException.ThrowIfNull(_tileSetSourceId);
 
@@ -103,6 +107,9 @@ public partial class GameMap : Node2D
         });
         for (int i = 0; i < 50; i++) SpawnUnit(_teams[0]);
         for (int i = 0; i < 50; i++) SpawnUnit(_teams[1]);
+
+        UpdateStockCount(true);
+        UpdateStockCount(false);
     }
 
 	private void SpawnUnit(Team team)
@@ -119,6 +126,7 @@ public partial class GameMap : Node2D
             ? _unitFactory.CreateUnit<BasicMeleeFighter>()
             : _unitFactory.CreateUnit<BasicRangedFighter>();
 		newUnit.Initialise(_pathManager, gridPosition, GetPositionAdjusted);
+        newUnit.OnKilled += unit => _killedUnits.Add(unit);
         team.AddUnit(newUnit);
         _units.Add(newUnit);
     }
@@ -191,8 +199,20 @@ public partial class GameMap : Node2D
 
     Task<Dictionary<Unit, Vector2I>> _cpuMoveTask;
 
-    public void PlayerTurnStart()
+    public void PlayerStartTurn()
     {
+        //TODO: move to CombatEnded method
+
+        foreach (var killedUnit in _killedUnits.Intersect(_units))
+        {
+            _units.Remove(killedUnit);
+            killedUnit.Team.RemoveUnit(killedUnit);
+        }
+        RemainingStockChanged(true, _teams.Where(t => t.IsPlayerControlled).Sum(t => t.Stock));
+        RemainingStockChanged(false, _teams.Where(t => !t.IsPlayerControlled).Sum(t => t.Stock));
+
+        // -----
+
         _isPlayerTurn = true;
 
         _cpuMoveTask = _enemyCombatManager.GenerateMovesAsync();
@@ -204,15 +224,14 @@ public partial class GameMap : Node2D
         {
             if (!_isPlayerTurn)
             {
-                PlayerTurnStart();
+                PlayerStartTurn();
                 return;
             }
             _isPlayerTurn = false;
             GD.Print("Player turn ended");
-            foreach ((Unit unit, Vector2I position) in _unitDestinations)
-            {
-                unit.MoveTo(position);
-            }
+
+            foreach (var unit in _units) unit.StartCombatPhase();
+            foreach ((Unit unit, Vector2I position) in _unitDestinations) unit.MoveTo(position);
 
             _cpuMoveTask ??= _enemyCombatManager.GenerateMovesAsync();
             var cpuMoves = await _cpuMoveTask;
@@ -225,6 +244,14 @@ public partial class GameMap : Node2D
         {
             GD.PrintErr(ex);
         }
+    }
+
+    private void UpdateStockCount(bool isPlayerTeam)
+    {
+        int remainingStock = isPlayerTeam
+            ? _teams[0].Units.Sum(u => u.Stock)
+            : _teams.Skip(1).SelectMany(t => t.Units).Sum(u => u.Stock);
+        RemainingStockChanged?.Invoke(isPlayerTeam, remainingStock);
     }
 
     private void MultiSelectUnits(Vector2I start, Vector2I end)
