@@ -46,7 +46,8 @@ public abstract partial class Unit : Node2D
 	{
 		_pathManager = pathManager;
 		GetPositionAdjusted += getPositionAdjusted;
-		
+
+		CurrentHealth = MaxHealth;
 		_targetGridPosition = gridPosition;
 		_targetPosition = GetPositionAdjusted(_targetGridPosition);
 		Position = _targetPosition;
@@ -113,8 +114,12 @@ public abstract partial class Unit : Node2D
                     _timeSinceActionMs = 0;
                     _currentActionType = null;
 
-					foreach (Vector2I watchPosition in _tileWatches)
-						_pathManager.CheckTileOccupied(watchPosition, ProcessWatchedTileEvent);
+					if (CurrentHealth == 0) Kill();
+					else
+					{
+                        foreach (Vector2I watchPosition in _tileWatches)
+                            _pathManager.CheckTileOccupied(watchPosition, ProcessWatchedTileEvent);
+                    }
                 }
 			}
 		}
@@ -178,7 +183,6 @@ public abstract partial class Unit : Node2D
 	private void Kill()
 	{
         IsInCombat = false;
-		//Team.RemoveUnit(this); //TODO: avoid collection modified issues here
 		OnKilled(this);
 
         _actionPointsRemaining = 0;
@@ -226,8 +230,6 @@ public abstract partial class Unit : Node2D
 
 	private bool ActionCanBeApplied(TileWatchEventInfo eventInfo, UnitActionType actionType)
 	{
-        var watchedPosition = eventInfo.Unit.GridPosition;
-
 		if (eventInfo.Type == Enums.TileWatchEventType.Left || 
 			eventInfo.Type == Enums.TileWatchEventType.Removed) return false;
 
@@ -245,14 +247,14 @@ public abstract partial class Unit : Node2D
                 return false;
         }
 
-		switch (actionType.RadiusType)
+		switch (actionType.RangeMeasure)
 		{
-			case Enums.ActionRadiusType.Rectangular:
-                if (Math.Abs(watchedPosition.X - GridPosition.X) > actionType.Range
-					|| Math.Abs(watchedPosition.Y - GridPosition.Y) > actionType.Range) return false;
+			case Enums.RangeMeasure.Chebyshev:
+                if (Math.Abs(eventInfo.Position.X - GridPosition.X) > actionType.Range
+					|| Math.Abs(eventInfo.Position.Y - GridPosition.Y) > actionType.Range) return false;
 				break;
-			case Enums.ActionRadiusType.Circular:
-                if (GridPosition.DistanceTo(watchedPosition) > actionType.Range) return false;
+			case Enums.RangeMeasure.Euclidean:
+                if (GridPosition.DistanceTo(eventInfo.Position) > actionType.Range) return false;
 				break;
 			default:
 				return false;

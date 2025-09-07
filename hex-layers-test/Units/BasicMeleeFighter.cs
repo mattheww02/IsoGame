@@ -24,6 +24,7 @@ public partial class BasicMeleeFighter : Unit
         {
             Damage = 10,
             DurationMs = 500,
+            DelayMs = 200,
         });
     }
 }

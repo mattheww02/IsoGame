@@ -26,6 +26,7 @@ public partial class BasicRangedFighter : Unit
                 Range = 10,
                 Damage = 5,
                 DurationMs = 750,
+                DelayMs = 600,
             },
         ]);
     }

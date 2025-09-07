@@ -64,7 +64,7 @@ public class PathManager
     public bool RegisterMove(Unit unit, Vector2I newPosition)
     {
         var position = unit.GridPosition;
-        if (!ValidateGridPosition(position) || !_reservations.Exchange(position, newPosition)) return false;
+        if (!ValidateGridPosition(position) || !ValidateGridPosition(newPosition) || !_reservations.Exchange(position, newPosition)) return false;
 
         TriggerTileWatchEvent(new(unit, position, Enums.TileWatchEventType.Left));
         TriggerTileWatchEvent(new(unit, newPosition, Enums.TileWatchEventType.Entered));
@@ -78,6 +78,15 @@ public class PathManager
         if (!_reservations.TryGetReservation(position, out var unit)) return false;
 
         callback?.Invoke(new(unit, position, Enums.TileWatchEventType.GameTick));
+        return true;
+    }
+
+    public bool CheckTileAvailable(Vector2I position)
+    {
+        if (!ValidateGridPosition(position)) return false;
+
+        if (_reservations.TryGetReservation(position, out _)) return false;
+
         return true;
     }
 

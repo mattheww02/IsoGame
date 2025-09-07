@@ -49,10 +49,10 @@ public static class Enums
         GameTick,
     }
 
-    public enum ActionRadiusType
+    public enum RangeMeasure
     {
-        Circular,
-        Rectangular,
+        Euclidean,
+        Chebyshev,
     }
 
     public enum UnitsAffected

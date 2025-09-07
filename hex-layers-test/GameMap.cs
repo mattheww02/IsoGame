@@ -98,29 +98,33 @@ public partial class GameMap : Node2D
     {
         _teams.Add(new()
         {
-            GuiColour = Colors.Blue,
+            GuiColour = Colors.Aqua,
             IsPlayerControlled = true,
         });
         _teams.Add(new()
         {
-            GuiColour = Colors.Red,
+            GuiColour = Colors.Salmon,
         });
+        _teamStartPosition = new(10, 10); //TODO
         for (int i = 0; i < 50; i++) SpawnUnit(_teams[0]);
+        _teamStartPosition = new(50, 50);
         for (int i = 0; i < 50; i++) SpawnUnit(_teams[1]);
 
         UpdateStockCount(true);
         UpdateStockCount(false);
     }
 
+    Vector2I _teamStartPosition;
+
 	private void SpawnUnit(Team team)
 	{
 		var rng = new RandomNumberGenerator();
-		Vector2I gridPosition;
+		Vector2I gridPosition = _teamStartPosition;
 
 		do
 		{
-			gridPosition = new Vector2I(rng.RandiRange(1, SizeX - 1), rng.RandiRange(1, SizeY - 1));
-		} while (!_level.GetTile(gridPosition).Navigable);
+            gridPosition += new Vector2I(rng.RandiRange(-2, 2), rng.RandiRange(-2, 2));
+		} while (!_pathManager.CheckTileAvailable(gridPosition));
 
         Unit newUnit = rng.Randf() > 0.5f
             ? _unitFactory.CreateUnit<BasicMeleeFighter>()

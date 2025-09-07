@@ -9,7 +9,7 @@ namespace HexLayersTest.Objects;
 public class UnitActionType
 {
     public int Range { get; set; }
-    public Enums.ActionRadiusType RadiusType { get; set; }
+    public Enums.RangeMeasure RangeMeasure { get; set; }
     public Enums.UnitsAffected UnitsAffected { get; set; }
     public int Damage { get; set; }
     public int DurationMs { get; set; }
@@ -24,7 +24,7 @@ public class MeleeAttackUnitActionType : UnitActionType
     public MeleeAttackUnitActionType()
     {
         Range = 1;
-        RadiusType = Enums.ActionRadiusType.Rectangular;
+        RangeMeasure = Enums.RangeMeasure.Euclidean;
         UnitsAffected = Enums.UnitsAffected.Enemies;
         ActionPoints = 1;
     }
@@ -34,7 +34,7 @@ public class RangedAttackUnitActionType : UnitActionType
 {
     public RangedAttackUnitActionType()
     {
-        RadiusType = Enums.ActionRadiusType.Circular;
+        RangeMeasure = Enums.RangeMeasure.Euclidean;
         UnitsAffected = Enums.UnitsAffected.Enemies;
         ActionPoints = 1;
     }
