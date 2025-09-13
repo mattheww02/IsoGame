@@ -14,6 +14,7 @@ _unitPackedScene = ExtResource("3_tw6lq")
 _guiMap = NodePath("GuiMap")
 _shadowMap = NodePath("ShadowMap")
 _unitFactory = NodePath("UnitFactory")
+_tileSetSourceId = 1
 
 [node name="GuiMap" parent="." instance=ExtResource("5_hrtji")]
 

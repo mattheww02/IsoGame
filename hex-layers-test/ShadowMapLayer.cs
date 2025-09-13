@@ -26,7 +26,7 @@ public partial class ShadowMapLayer : TileMapLayerWithHeight
     public ShadowMapLayer()
     {
         _relativeHeight = 1;
-        ShadowOffset = TileSet.TileSize * new Vector2(-0.1f, -0.1f);
+        ShadowOffset = TileSet.TileSize * new Vector2(-0.1f, -0.9f);
     }
 
     public void AddShadow(Vector2I position)

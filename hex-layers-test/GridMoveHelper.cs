@@ -43,7 +43,7 @@ public class GridMoveHelper
         }
         catch
         { //TODO: catch only Munkres exceptions here
-            return false;
+            return true;
         }
     }
     

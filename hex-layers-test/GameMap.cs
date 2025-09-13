@@ -106,7 +106,9 @@ public partial class GameMap : Node2D
             GuiColour = Colors.Salmon,
         });
         _teamStartPosition = new(10, 10); //TODO
-        for (int i = 0; i < 50; i++) SpawnUnit(_teams[0]);
+        for (int i = 0; i < 25; i++) SpawnUnit(_teams[0], _unitFactory.CreateUnit<BasicRangedFighter>);
+        _teamStartPosition = new(10, 20);
+        for (int i = 0; i < 25; i++) SpawnUnit(_teams[0], _unitFactory.CreateUnit<BasicMeleeFighter>);
         _teamStartPosition = new(50, 50);
         for (int i = 0; i < 50; i++) SpawnUnit(_teams[1]);
 
@@ -116,7 +118,7 @@ public partial class GameMap : Node2D
 
     Vector2I _teamStartPosition;
 
-	private void SpawnUnit(Team team)
+	private void SpawnUnit(Team team, Func<Unit> unitFactoryMethod = null) //TODO: use generic instead
 	{
 		var rng = new RandomNumberGenerator();
 		Vector2I gridPosition = _teamStartPosition;
@@ -126,9 +128,11 @@ public partial class GameMap : Node2D
             gridPosition += new Vector2I(rng.RandiRange(-2, 2), rng.RandiRange(-2, 2));
 		} while (!_pathManager.CheckTileAvailable(gridPosition));
 
-        Unit newUnit = rng.Randf() > 0.5f
-            ? _unitFactory.CreateUnit<BasicMeleeFighter>()
-            : _unitFactory.CreateUnit<BasicRangedFighter>();
+        Unit newUnit = unitFactoryMethod != null
+            ? unitFactoryMethod()
+            : rng.Randf() > 0.5f
+                ? _unitFactory.CreateUnit<BasicMeleeFighter>()
+                : _unitFactory.CreateUnit<BasicRangedFighter>();
 		newUnit.Initialise(_pathManager, gridPosition, GetPositionAdjusted);
         newUnit.OnKilled += unit => _killedUnits.Add(unit);
         team.AddUnit(newUnit);
@@ -236,6 +240,7 @@ public partial class GameMap : Node2D
 
             foreach (var unit in _units) unit.StartCombatPhase();
             foreach ((Unit unit, Vector2I position) in _unitDestinations) unit.MoveTo(position);
+            _unitDestinations.Clear();
 
             _cpuMoveTask ??= _enemyCombatManager.GenerateMovesAsync();
             var cpuMoves = await _cpuMoveTask;
