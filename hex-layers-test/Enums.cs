@@ -37,4 +37,28 @@ public static class Enums
         GoldenRetriever,
         Cat,
     }
+
+    public enum TileWatchEventType
+    {
+        Entered,
+        Left,
+        Added,
+        Removed,
+        StartCombat,
+        NewlyWatched,
+        GameTick,
+    }
+
+    public enum RangeMeasure
+    {
+        Euclidean,
+        Chebyshev,
+    }
+
+    public enum UnitsAffected
+    {
+        Enemies,
+        Allies,
+        All,
+    }
 }

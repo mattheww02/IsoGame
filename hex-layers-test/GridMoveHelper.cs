@@ -14,15 +14,19 @@ namespace HexLayersTest;
 
 public class GridMoveHelper
 {
-    private readonly LevelArray _level;
+    private readonly Vector2I _levelSize;
+    private readonly PathManager _pathManager;
 
     private const double MaxDistance = double.PositiveInfinity;
     private const float Alpha = 0.9f; // between 0 and 1
 
     public GridMoveHelper(
-        LevelArray level)
+        Vector2I levelSize, 
+        PathManager pathManager)
     {
-        _level = level;
+        _levelSize = levelSize;
+        _pathManager = pathManager;
+
     }
 
     public bool GetMovedFormation<T>(ref Dictionary<T, Vector2I> unitPositions, Vector2I transform) where T : class
@@ -121,15 +125,15 @@ public class GridMoveHelper
     private IEnumerable<Vector2I> GetUnvisitedNeighbours(Vector2I position, HashSet<Vector2I> visited)
     {
         List<Vector2I> newPositions = [];
-        if (position.X < _level.SizeX - 1) newPositions.Add(new Vector2I(position.X + 1, position.Y));
+        if (position.X < _levelSize.X - 1) newPositions.Add(new Vector2I(position.X + 1, position.Y));
         if (position.X > 0) newPositions.Add(new Vector2I(position.X - 1, position.Y));
-        if (position.Y < _level.SizeY - 1) newPositions.Add(new Vector2I(position.X, position.Y + 1));
+        if (position.Y < _levelSize.Y - 1) newPositions.Add(new Vector2I(position.X, position.Y + 1));
         if (position.Y > 0) newPositions.Add(new Vector2I(position.X, position.Y - 1));
         return newPositions.Where(p => !visited.Contains(p));
     }
 
     private bool TileIsViable(Vector2I gridPosition)
     {
-        return _level.GetTile(gridPosition).Navigable; //TODO: check if tile is occupied here too
+        return _pathManager.CheckTileAvailable(gridPosition); //TODO: check if tile is occupied here too
     }
 }

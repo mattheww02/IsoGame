@@ -1,10 +1,15 @@
-[gd_scene load_steps=2 format=3 uid="uid://dvdkmt3c6p8e8"]
+[gd_scene load_steps=3 format=3 uid="uid://dvdkmt3c6p8e8"]
 
 [ext_resource type="Script" uid="uid://bluexr61s34o2" path="res://Hud.cs" id="1_37p78"]
 
-[node name="HUD" type="CanvasLayer" node_paths=PackedStringArray("_endTurnButton")]
+[sub_resource type="LabelSettings" id="LabelSettings_37p78"]
+font_size = 48
+
+[node name="HUD" type="CanvasLayer" node_paths=PackedStringArray("_endTurnButton", "_playerStockLabel", "_enemyStockLabel")]
 script = ExtResource("1_37p78")
 _endTurnButton = NodePath("EndTurnButton")
+_playerStockLabel = NodePath("ColorRect/PlayerStockCount")
+_enemyStockLabel = NodePath("ColorRect2/EnemyStockCount")
 
 [node name="EndTurnButton" type="Button" parent="."]
 anchors_preset = 3
@@ -18,3 +23,57 @@ grow_horizontal = 0
 grow_vertical = 0
 scale = Vector2(0.91399, 0.891062)
 text = "End Turn"
+
+[node name="ColorRect" type="ColorRect" parent="."]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -106.0
+offset_top = 15.0
+offset_right = 14.0
+offset_bottom = 75.0
+grow_horizontal = 2
+color = Color(0, 0.596744, 0.977573, 0.392157)
+
+[node name="PlayerStockCount" type="Label" parent="ColorRect"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -41.0
+offset_top = -33.5
+offset_right = 41.0
+offset_bottom = 33.5
+grow_horizontal = 2
+grow_vertical = 2
+text = "000"
+label_settings = SubResource("LabelSettings_37p78")
+
+[node name="ColorRect2" type="ColorRect" parent="."]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = 24.0
+offset_top = 15.0
+offset_right = 144.0
+offset_bottom = 75.0
+grow_horizontal = 2
+color = Color(1, 0.258874, 0.318182, 0.392157)
+
+[node name="EnemyStockCount" type="Label" parent="ColorRect2"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -41.0
+offset_top = -33.5
+offset_right = 41.0
+offset_bottom = 33.5
+grow_horizontal = 2
+grow_vertical = 2
+text = "000"
+label_settings = SubResource("LabelSettings_37p78")
