@@ -169,7 +169,8 @@ public abstract partial class Unit : Node2D
 	public void StartCombatPhase()
 	{
 		IsInCombat = true;
-		_pathManager.RegisterStartOfCombat(this); //TODO: not working?
+		_pathManager.RegisterStartOfCombat(this);
+		_gridPath.Clear();
 		_actionPointsRemaining = Math.Min(MaxActionPoints, _actionPointsRemaining + ActionPointsPerTurn);
 		_currentActionType = null;
     }

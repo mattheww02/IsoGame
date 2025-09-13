@@ -327,7 +327,7 @@ public partial class GameMap : Node2D
 
         var unitPositions = _selectedUnits.ToDictionary(u => u, u => u.GridPosition);
 
-        if (new GridMoveHelper(_level).GetMovedFormation(ref unitPositions, targetPosition - startPosition))
+        if (new GridMoveHelper(new(SizeX, SizeY), _pathManager).GetMovedFormation(ref unitPositions, targetPosition - startPosition))
         {
             foreach (var (unit, destination) in unitPositions)
                 _unitDestinations[unit] = destination;

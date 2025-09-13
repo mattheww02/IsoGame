@@ -27,9 +27,6 @@ public partial class GuiMapLayer : TileMapLayerWithHeight
 	}
 
 	public void HighlightTiles(IEnumerable<Vector3I> gridPositions)
-		//TODO: now that tiles are no longer cubes, this will have to adjust position based on tile height
-		//TODO: we can achieve this by using 2 GuiMapLayers (probably inside some GuiMap node), one for odd tile heights and one for even
-		//TODO: it might also help to consider adjusting the sprite/tileset used here (maybe a flat square sprite rather than a box)
 	{
         foreach (var tile in _highlightedTiles) SetCell(tile);
         _highlightedTiles.Clear();
