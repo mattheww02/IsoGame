@@ -10,6 +10,7 @@ namespace HexLayersTest.Units;
 
 public partial class BasicMeleeFighter : Unit
 {
+    public override Enums.UnitType UnitType => Enums.UnitType.BasicMeleeFighter;
     public override Enums.UnitSpriteType UnitSpriteType => Enums.UnitSpriteType.GoldenRetriever;
     public override float MoveSpeed => 50.0f;
     public override int MoveRange => 100;

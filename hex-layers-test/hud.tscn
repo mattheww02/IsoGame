@@ -1,15 +1,20 @@
-[gd_scene load_steps=3 format=3 uid="uid://dvdkmt3c6p8e8"]
+[gd_scene load_steps=6 format=3 uid="uid://dvdkmt3c6p8e8"]
 
 [ext_resource type="Script" uid="uid://bluexr61s34o2" path="res://Hud.cs" id="1_37p78"]
+[ext_resource type="Script" uid="uid://l16ob8ewm0mq" path="res://UnitSpriteProvider.cs" id="2_640wx"]
+[ext_resource type="PackedScene" uid="uid://i8wbwd2yqcp5" path="res://UnitSprites/golden_retriever_sprite.tscn" id="3_a2258"]
+[ext_resource type="PackedScene" uid="uid://dqo778up3qhuq" path="res://UnitSprites/cat_sprite.tscn" id="4_1xsix"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_37p78"]
 font_size = 48
 
-[node name="HUD" type="CanvasLayer" node_paths=PackedStringArray("_endTurnButton", "_playerStockLabel", "_enemyStockLabel")]
+[node name="HUD" type="CanvasLayer" node_paths=PackedStringArray("_endTurnButton", "_playerStockLabel", "_enemyStockLabel", "_unitStockIndicatorList", "_unitSpriteProvider")]
 script = ExtResource("1_37p78")
 _endTurnButton = NodePath("EndTurnButton")
 _playerStockLabel = NodePath("ColorRect/PlayerStockCount")
 _enemyStockLabel = NodePath("ColorRect2/EnemyStockCount")
+_unitStockIndicatorList = NodePath("ItemList")
+_unitSpriteProvider = NodePath("UnitSpriteProvider")
 
 [node name="EndTurnButton" type="Button" parent="."]
 anchors_preset = 3
@@ -77,3 +82,14 @@ grow_horizontal = 2
 grow_vertical = 2
 text = "000"
 label_settings = SubResource("LabelSettings_37p78")
+
+[node name="ItemList" type="ItemList" parent="."]
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 150.0
+grow_vertical = 2
+
+[node name="UnitSpriteProvider" type="Node" parent="."]
+script = ExtResource("2_640wx")
+_goldenRetrieverSpritePackedScene = ExtResource("3_a2258")
+_catSpritePackedScene = ExtResource("4_1xsix")

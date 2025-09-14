@@ -19,7 +19,7 @@ public partial class TileMapLayerWithHeight : TileMapLayer
         {
             _layerHeight = value;
             Position = new Vector2(0, -_layerHeight * 8);// TileSet.TileSize.Y);
-            YSortOrigin = _relativeHeight + _layerHeight * (MaxRelativeHeight + 1);
+            //YSortOrigin = _relativeHeight + _layerHeight * (MaxRelativeHeight + 1);
             ZIndex = _relativeHeight + _layerHeight * (MaxRelativeHeight + 1);
             YSortEnabled = true;
         }

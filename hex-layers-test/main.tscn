@@ -20,16 +20,19 @@ shader_parameter/blur = 0.15
 [sub_resource type="CanvasTexture" id="CanvasTexture_lquwl"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("_gameMap", "_hud")]
+y_sort_enabled = true
 script = ExtResource("1_1bvp3")
 _gameMap = NodePath("GameMap")
 _hud = NodePath("HUD")
 
 [node name="GameCamera" type="Camera2D" parent="."]
+y_sort_enabled = true
 position = Vector2(87, 680)
 zoom = Vector2(2, 2)
 script = ExtResource("4_1bvp3")
 
 [node name="GameMap" parent="." instance=ExtResource("2_h2yge")]
+y_sort_enabled = true
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 

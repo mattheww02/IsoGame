@@ -9,6 +9,7 @@ namespace HexLayersTest.Units;
 
 public partial class BasicRangedFighter : Unit
 {
+    public override Enums.UnitType UnitType => Enums.UnitType.BasicRangedFighter;
     public override Enums.UnitSpriteType UnitSpriteType => Enums.UnitSpriteType.Cat;
     public override float MoveSpeed => 50.0f;
     public override int MoveRange => 100;

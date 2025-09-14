@@ -61,4 +61,20 @@ public static class Enums
         Allies,
         All,
     }
+
+    public enum CombatGameStatus
+    {
+        Loading,
+        PlayerSetup,
+        PlayerTurn,
+        WaitingForOpponent,
+        Resolving,
+        CombatFinished,
+    }
+
+    public enum UnitType
+    {
+        BasicMeleeFighter,
+        BasicRangedFighter,
+    }
 }

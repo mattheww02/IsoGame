@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" uid="uid://b155keu24mylp" path="res://unit_factory.tscn" id="6_55amd"]
 
 [node name="GameMap" type="Node2D" node_paths=PackedStringArray("_guiMap", "_shadowMap", "_unitFactory")]
+y_sort_enabled = true
 script = ExtResource("1_1va4l")
 _mapLayerPackedScene = ExtResource("2_5fonf")
 _unitPackedScene = ExtResource("3_tw6lq")
@@ -17,6 +18,7 @@ _unitFactory = NodePath("UnitFactory")
 _tileSetSourceId = 1
 
 [node name="GuiMap" parent="." instance=ExtResource("5_hrtji")]
+y_sort_enabled = true
 
 [node name="ShadowMap" parent="." instance=ExtResource("5_55amd")]
 y_sort_enabled = true

@@ -3,6 +3,7 @@ using HexLayersTest;
 using HexLayersTest.Objects;
 using HexLayersTest.Units;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -11,32 +12,47 @@ using System.Threading.Tasks;
 public partial class GameMap : Node2D
 {
     public event Action<bool, int> RemainingStockChanged;
+    public event Action<Enums.CombatGameStatus> CombatStatusChanged;
+    public event Action<PlayerSetupInfo> PlayerSetupInfoChanged;
 
-	[Export] private PackedScene _mapLayerPackedScene;
+    [Export] private PackedScene _mapLayerPackedScene;
     [Export] private PackedScene _unitPackedScene;
     [Export] private GuiMap _guiMap;
     [Export] private ShadowMap _shadowMap;
     [Export] private UnitFactory _unitFactory;
     [Export] private int _tileSetSourceId;
-	
-	private readonly List<GameMapLayer> _mapLayers;
-    private readonly TileSpriteProvider _tileSpriteProvider;
-	private readonly Vector2I _tileOffset = new(5, 5);
-	private readonly int _seed;
 
-	private LevelArray _level;
+    private Enums.CombatGameStatus GameStatus
+    {
+        get => _gameStatus;
+        set
+        {
+            _gameStatus = value;
+            CombatStatusChanged?.Invoke(value);
+        }
+    }
+
+    private readonly List<GameMapLayer> _mapLayers;
+    private readonly TileSpriteProvider _tileSpriteProvider;
+    private readonly int _seed;
+
+    private LevelArray _level;
     private PathManager _pathManager;
     private EnemyCombatManager _enemyCombatManager;
     private readonly List<Unit> _units;
-    private readonly HashSet<Unit> _killedUnits;
-    private readonly Dictionary<Unit, Vector2I> _unitDestinations;
+    private readonly ConcurrentBag<Unit> _killedUnits;
+    private readonly List<MultiUnitMoveRequest> _unitDestinations;
     private readonly MultiUnitSelection _selectedUnits;
 
     private readonly List<Team> _teams;
-    private bool _isPlayerTurn;
-    
+    private Enums.CombatGameStatus _gameStatus;
+    private Timer _combatTimer;
+
+    private PlayerSetupInfo _playerSetupInfo;
+
     private const int SizeX = 150, SizeY = 100, SizeZ = 10;
 	private const int MaxLandHeight = 8, GlobalWaterLevel = 4;
+    private const int CombatTimeoutLimitMs = 2000;
 
 	public GameMap()
 	{
@@ -47,6 +63,7 @@ public partial class GameMap : Node2D
         _teams = [];
         _unitDestinations = [];
 		_selectedUnits = [];
+        GameStatus = Enums.CombatGameStatus.Loading;
 		_seed = (int)(new Random().NextInt64(500));
     }
 
@@ -65,8 +82,28 @@ public partial class GameMap : Node2D
 
         CreateTeams();
         _enemyCombatManager = new(_level, _teams);
+        _cpuMoveTask = _enemyCombatManager.GenerateMovesAsync();
 
-        _isPlayerTurn = true;
+        _combatTimer = new Timer()
+        {
+            Autostart = false,
+            WaitTime = CombatTimeoutLimitMs / 1000d,
+            OneShot = true
+        };
+        _combatTimer.Timeout += CombatEnded;
+        AddChild(_combatTimer);
+
+        _playerSetupInfo = new()
+        {
+            StockRemaining = 50,
+            CurrentUnitType = Enums.UnitType.BasicMeleeFighter,
+        };
+        _playerSetupInfo.SetUnitSupply(Enums.UnitType.BasicMeleeFighter, 30);
+        _playerSetupInfo.SetUnitSupply(Enums.UnitType.BasicRangedFighter, 30);
+        _playerSetupInfo.Changed += info => PlayerSetupInfoChanged?.Invoke(info);
+        PlayerSetupInfoChanged?.Invoke(_playerSetupInfo);
+
+        GameStatus = Enums.CombatGameStatus.PlayerSetup;
     }
 
     private void CreateTileMapLayers()
@@ -105,31 +142,32 @@ public partial class GameMap : Node2D
         {
             GuiColour = Colors.Salmon,
         });
-        _teamStartPosition = new(10, 10); //TODO
-        for (int i = 0; i < 25; i++) SpawnUnit(_teams[0], _unitFactory.CreateUnit<BasicRangedFighter>);
-        _teamStartPosition = new(10, 20);
-        for (int i = 0; i < 25; i++) SpawnUnit(_teams[0], _unitFactory.CreateUnit<BasicMeleeFighter>);
-        _teamStartPosition = new(50, 50);
-        for (int i = 0; i < 50; i++) SpawnUnit(_teams[1]);
+        //_teamStartPosition = new(10, 10); //TODO
+        //for (int i = 0; i < 25; i++) SpawnUnit(_teams[0], _unitFactory.CreateUnit<BasicRangedFighter>);
+        //_teamStartPosition = new(10, 20);
+        //for (int i = 0; i < 25; i++) SpawnUnit(_teams[0], _unitFactory.CreateUnit<BasicMeleeFighter>);
+        Vector2I enemyTeamStartPositionOrigin = new(50, 50);
+        for (int i = 0; i < 50; i++) SpawnUnit(_teams[1], enemyTeamStartPositionOrigin, randomisePosition: true);
 
         UpdateStockCount(true);
         UpdateStockCount(false);
     }
 
-    Vector2I _teamStartPosition;
-
-	private void SpawnUnit(Team team, Func<Unit> unitFactoryMethod = null) //TODO: use generic instead
+	private Unit SpawnUnit(Team team, Vector2I position, Enums.UnitType? unitType = null, bool randomisePosition = false)
 	{
 		var rng = new RandomNumberGenerator();
-		Vector2I gridPosition = _teamStartPosition;
+		Vector2I gridPosition = position;
 
-		do
-		{
-            gridPosition += new Vector2I(rng.RandiRange(-2, 2), rng.RandiRange(-2, 2));
-		} while (!_pathManager.CheckTileAvailable(gridPosition));
+        if (randomisePosition)
+        {
+            do
+            {
+                gridPosition += new Vector2I(rng.RandiRange(-2, 2), rng.RandiRange(-2, 2));
+            } while (!_pathManager.CheckTileAvailable(gridPosition));
+        }
 
-        Unit newUnit = unitFactoryMethod != null
-            ? unitFactoryMethod()
+        Unit newUnit = unitType != null
+            ? _unitFactory.CreateUnit(unitType.Value)
             : rng.Randf() > 0.5f
                 ? _unitFactory.CreateUnit<BasicMeleeFighter>()
                 : _unitFactory.CreateUnit<BasicRangedFighter>();
@@ -137,10 +175,14 @@ public partial class GameMap : Node2D
         newUnit.OnKilled += unit => _killedUnits.Add(unit);
         team.AddUnit(newUnit);
         _units.Add(newUnit);
+        newUnit.OnMoveOrAction += ResetCombatTimer;
+        return newUnit;
     }
 
     public override void _Process(double delta)
 	{
+        if (GameStatus != Enums.CombatGameStatus.PlayerTurn) return;
+
         if (MousePositionOnGrid(out var targetPosition))
         {
             if (_dragStart != null)
@@ -159,6 +201,32 @@ public partial class GameMap : Node2D
     private const float DragThreshold = 4f;
 
     public override void _UnhandledInput(InputEvent @event) //TODO: need SelectionManager, GameController, PlayerController(?)
+    {
+        if (GameStatus == Enums.CombatGameStatus.PlayerTurn) UnhandledInputPlayerTurn(@event);
+        else if (GameStatus == Enums.CombatGameStatus.PlayerSetup) UnhandledInputPlayerSetup(@event);
+    }
+
+    private void UnhandledInputPlayerSetup(InputEvent @event)
+    {
+        if (@event is InputEventMouseButton mouseButton && mouseButton.Pressed)
+        {
+            if (mouseButton.ButtonIndex == MouseButton.Left 
+                && MousePositionOnGrid(out var targetPosition) 
+                && _pathManager.CheckTileAvailable(targetPosition))
+            {
+                var unitType = _playerSetupInfo.CurrentUnitType;
+                int unitSupply = _playerSetupInfo.UnitSupply[unitType];
+                if (unitSupply > 0 && _playerSetupInfo.StockRemaining > 0) //TODO: check stock against unit type stock
+                {
+                    var newUnit = SpawnUnit(_teams[0], targetPosition, unitType);
+                    _playerSetupInfo.StockRemaining -= newUnit.Stock;
+                    _playerSetupInfo.SetUnitSupply(unitType, unitSupply - 1);
+                }
+            }
+        }
+    }
+
+    private void UnhandledInputPlayerTurn(InputEvent @event)
     {
         if (@event is InputEventMouseButton mouseButton) //TODO: some cases where selection thinks mouse stays pressed
         {
@@ -207,7 +275,7 @@ public partial class GameMap : Node2D
 
     Task<Dictionary<Unit, Vector2I>> _cpuMoveTask;
 
-    public void PlayerStartTurn()
+    public void CombatEnded()
     {
         //TODO: move to CombatEnded method
 
@@ -215,31 +283,58 @@ public partial class GameMap : Node2D
         {
             _units.Remove(killedUnit);
             killedUnit.Team.RemoveUnit(killedUnit);
+            killedUnit.OnMoveOrAction -= ResetCombatTimer;
+            killedUnit.ProcessMode = ProcessModeEnum.Disabled;
         }
         RemainingStockChanged(true, _teams.Where(t => t.IsPlayerControlled).Sum(t => t.Stock));
         RemainingStockChanged(false, _teams.Where(t => !t.IsPlayerControlled).Sum(t => t.Stock));
 
-        // -----
+        foreach (var unit in _units)
+        {
+            if (unit.GridPosition != unit.ReservedGridPosition)
+            {
+                GD.Print("Reserved position different to actual grid position");
+                unit.MoveTo(unit.ReservedGridPosition);
+            }
+        }
 
-        _isPlayerTurn = true;
-
-        _cpuMoveTask = _enemyCombatManager.GenerateMovesAsync();
+        //TODO: set status to end of combat if either teams have no units left
+        GameStatus = Enums.CombatGameStatus.PlayerTurn;
     }
 
     public async void PlayerEndTurn()
     {
         try
         {
-            if (!_isPlayerTurn)
+            if (GameStatus == Enums.CombatGameStatus.PlayerSetup)
             {
-                PlayerStartTurn();
+                GameStatus = Enums.CombatGameStatus.PlayerTurn;
                 return;
             }
-            _isPlayerTurn = false;
+            else if (GameStatus != Enums.CombatGameStatus.PlayerTurn)
+            {
+                GD.Print("Can't move units");
+                return;
+            }
+            GameStatus = Enums.CombatGameStatus.WaitingForOpponent;
             GD.Print("Player turn ended");
 
             foreach (var unit in _units) unit.StartCombatPhase();
-            foreach ((Unit unit, Vector2I position) in _unitDestinations) unit.MoveTo(position);
+            foreach (var req in _unitDestinations)
+            {
+                if (req.MoveRequests.Count == 1)
+                {
+                    (var unit, Vector2I destination) = req.MoveRequests.First();
+                    unit.MoveTo(destination);
+                }
+                else
+                {
+                    foreach (var unit in req.MoveRequests.Keys)
+                    {
+                        unit.MoveTo(req);
+                    }
+                }
+            }
             _unitDestinations.Clear();
 
             _cpuMoveTask ??= _enemyCombatManager.GenerateMovesAsync();
@@ -248,6 +343,8 @@ public partial class GameMap : Node2D
             {
                 unit.MoveTo(position);
             }
+            _combatTimer.Start();
+            GameStatus = Enums.CombatGameStatus.Resolving;
         }
         catch (Exception ex)
         {
@@ -332,10 +429,9 @@ public partial class GameMap : Node2D
 
         var unitPositions = _selectedUnits.ToDictionary(u => u, u => u.GridPosition);
 
-        if (new GridMoveHelper(new(SizeX, SizeY), _pathManager).GetMovedFormation(ref unitPositions, targetPosition - startPosition))
+        if (new GridMoveHelper(new(SizeX, SizeY), _pathManager).GetMovedFormation(unitPositions, targetPosition - startPosition))
         {
-            foreach (var (unit, destination) in unitPositions)
-                _unitDestinations[unit] = destination;
+            _unitDestinations.Add(new() { MoveRequests = unitPositions });
         }
         else
         {
@@ -380,4 +476,15 @@ public partial class GameMap : Node2D
 	{
 		return _level.GetTile(gridPosition.X, gridPosition.Y).Height;
 	}
+
+    private void ResetCombatTimer()
+    {
+        if (_gameStatus == Enums.CombatGameStatus.Resolving && _combatTimer.TimeLeft > 0) 
+            _combatTimer.Start();
+    }
+
+    public void SetCurrentUnitTypePlayerSetup(Enums.UnitType unitType)
+    {
+        _playerSetupInfo.CurrentUnitType = unitType;
+    }
 }

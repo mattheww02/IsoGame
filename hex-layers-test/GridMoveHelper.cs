@@ -29,7 +29,7 @@ public class GridMoveHelper
 
     }
 
-    public bool GetMovedFormation<T>(ref Dictionary<T, Vector2I> unitPositions, Vector2I transform) where T : class
+    public bool GetMovedFormation<T>(Dictionary<T, Vector2I> unitPositions, Vector2I transform) where T : class
     {
         try
         {

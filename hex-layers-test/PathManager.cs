@@ -18,6 +18,8 @@ public class PathManager
     private readonly TileReservationSet _reservations;
     private readonly ConcurrentDictionary<Vector2I, Action<TileWatchEventInfo>> _tileWatches;
 
+    private const int MaxTilesToOvertake = 10;
+
     public PathManager(LevelArray level)
     {
         _level = level;
@@ -34,9 +36,62 @@ public class PathManager
         return _aStarGrid.GetPathGrid(start, end);
     }
 
+    public Vector2I[] GetPath(Unit unit, MultiUnitMoveRequest moveRequest)
+    {
+        Vector2I start = unit.GridPosition;
+        if (!moveRequest.MoveRequests.TryGetValue(unit, out Vector2I end))
+            return [];
+
+        if ((moveRequest.FirstUnitPath?.Length ?? 0) == 0)
+        {
+            moveRequest.FirstUnitPath = GetPath(start, end);
+            return moveRequest.FirstUnitPath;
+        }
+
+        List<Vector2I> path = new() { start };
+
+        Vector2I offset = start - moveRequest.FirstUnitPath[0];
+
+        foreach (var leaderStep in moveRequest.FirstUnitPath)
+        {
+            Vector2I desired = leaderStep + offset;
+
+            if (ValidateGridPosition(desired))
+            {
+                if (path[^1] != desired)
+                    path.Add(desired);
+            }
+            else
+            {
+                var detour = GetPath(path[^1], leaderStep);
+
+                if (detour.Length > 1)
+                {
+                    path.AddRange(detour.Skip(1));
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            if (path[^1] == end)
+                break;
+        }
+
+        if (path[^1] != end)
+        {
+            var tail = GetPath(path[^1], end);
+            if (tail.Length > 1)
+                path.AddRange(tail.Skip(1));
+        }
+
+        return path.ToArray();
+    }
+
     public bool RegisterStartPosition(Unit unit)
     {
-        var position = unit.GridPosition;
+        var position = unit.ReservedGridPosition;
         if (!ValidateGridPosition(position) || !_reservations.Reserve(position, unit)) return false;
 
         TriggerTileWatchEvent(new(unit, position, Enums.TileWatchEventType.Added));
@@ -45,7 +100,7 @@ public class PathManager
 
     public bool RegisterStartOfCombat(Unit unit)
     {
-        var position = unit.GridPosition;
+        var position = unit.ReservedGridPosition;
         if (!ValidateGridPosition(position) || !_reservations.IsReserved(position)) return false;
 
         TriggerTileWatchEvent(new(unit ,position, Enums.TileWatchEventType.StartCombat));
@@ -54,21 +109,50 @@ public class PathManager
 
     public bool RegisterRemoval(Unit unit)
     {
-        var position = unit.GridPosition;
-        if (!ValidateGridPosition(position) || !_reservations.Release(position)) return false;
+        var position = unit.ReservedGridPosition;
+        if (!ValidateGridPosition(position)) return false;
+
+        if (_reservations.TryGetReservation(position, out var unitOnTile))
 
         TriggerTileWatchEvent(new(unit, position, Enums.TileWatchEventType.Removed));
         return true;
     }
 
-    public bool RegisterMove(Unit unit, Vector2I newPosition)
+    public bool RegisterMove(Unit unit, Queue<Vector2I> gridPath)
     {
-        var position = unit.GridPosition;
-        if (!ValidateGridPosition(position) || !ValidateGridPosition(newPosition) || !_reservations.Exchange(position, newPosition)) return false;
+        var position = unit.ReservedGridPosition;
+        if (!gridPath.TryPeek(out var newPosition) || !ValidateGridPosition(position) || !ValidateGridPosition(newPosition)) return false;
+
+        if (!_reservations.Exchange(position, newPosition))
+        {
+            //if (_reservations.TryGetReservation(newPosition, out Unit blocker) && blocker.IsMoving) return false;
+
+            var gridPathList = gridPath.ToList();
+            for (int i = 1; i <= MaxTilesToOvertake; i++)
+            {
+                if (i >= gridPath.Count) return false;
+
+                if (_reservations.Exchange(position, gridPathList[i]))
+                {
+                    unit.TilesToOvertake = i + 1;
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         TriggerTileWatchEvent(new(unit, position, Enums.TileWatchEventType.Left));
         TriggerTileWatchEvent(new(unit, newPosition, Enums.TileWatchEventType.Entered));
         return true;
+    }
+
+    public void RegisterMoveOvertake(Unit unit, Vector2I newPosition)
+    {
+        var position = unit.GridPosition;
+        unit.TilesToOvertake--;
+        TriggerTileWatchEvent(new(unit, position, Enums.TileWatchEventType.Left));
+        TriggerTileWatchEvent(new(unit, newPosition, Enums.TileWatchEventType.Entered));
     }
 
     public bool CheckTileOccupied(Vector2I position, Action<TileWatchEventInfo> callback = null)
