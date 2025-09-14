@@ -1,5 +1,8 @@
 using Godot;
+using HexLayersTest;
+using HexLayersTest.Objects;
 using System;
+using System.Collections.Generic;
 
 public partial class Main : Node2D
 {
@@ -9,7 +12,10 @@ public partial class Main : Node2D
 	public override void _Ready()
 	{
 		_hud.EndTurnButtonPressed += OnPlayerEndTurn;
-		_gameMap.RemainingStockChanged += OnRemainingStockChanged;
+        _hud.NewUnitTypeSelected += OnNewUnitTypeSelected;
+        _gameMap.RemainingStockChanged += OnRemainingStockChanged;
+		_gameMap.CombatStatusChanged += OnCombatStatusChanged;
+		_gameMap.PlayerSetupInfoChanged += OnPlayerSetupInfoChanged;
 
 		_gameMap.Initialise();
 	}
@@ -23,5 +29,20 @@ public partial class Main : Node2D
 	{
 		if (isPlayerTeam) _hud.UpdatePlayerStock(count);
 		else _hud.UpdateEnemyStock(count);
+	}
+
+	private void OnCombatStatusChanged(Enums.CombatGameStatus status)
+	{
+		_hud.UpdateCombatStatus(status);
+	}
+
+	private void OnPlayerSetupInfoChanged(PlayerSetupInfo playerSetupInfo)
+	{
+		_hud.UpdatePlayerSetupInfo(playerSetupInfo);
+	}
+
+	private void OnNewUnitTypeSelected(Enums.UnitType unitType)
+	{
+		_gameMap.SetCurrentUnitTypePlayerSetup(unitType);
 	}
 }

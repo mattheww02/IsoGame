@@ -1,19 +1,50 @@
-[gd_scene load_steps=5 format=3 uid="uid://c23cflepupeeh"]
+[gd_scene load_steps=8 format=3 uid="uid://c23cflepupeeh"]
 
 [ext_resource type="Script" uid="uid://bvj355xykmc0a" path="res://Main.cs" id="1_1bvp3"]
 [ext_resource type="PackedScene" uid="uid://nln0s8pcp6kn" path="res://game_map.tscn" id="2_h2yge"]
 [ext_resource type="PackedScene" uid="uid://dvdkmt3c6p8e8" path="res://hud.tscn" id="3_h2yge"]
 [ext_resource type="Script" uid="uid://bptrvkdpfslh8" path="res://GameCamera.cs" id="4_1bvp3"]
+[ext_resource type="Shader" uid="uid://ojxy2yi7p5b0" path="res://Shaders/scanlines.gdshader" id="5_lquwl"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_7mycd"]
+shader = ExtResource("5_lquwl")
+shader_parameter/scanline_color = Color(0, 0, 0, 1)
+shader_parameter/flicker_color = Color(0, 0, 0, 1)
+shader_parameter/scanlines_count = 10.0
+shader_parameter/scanlines_intensity = 0.05
+shader_parameter/flicker_speed = 1.0
+shader_parameter/flicker_intensity = 0.01
+shader_parameter/color_offset = 0.0
+shader_parameter/blur = 0.15
+
+[sub_resource type="CanvasTexture" id="CanvasTexture_lquwl"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("_gameMap", "_hud")]
+y_sort_enabled = true
 script = ExtResource("1_1bvp3")
 _gameMap = NodePath("GameMap")
 _hud = NodePath("HUD")
 
 [node name="GameCamera" type="Camera2D" parent="."]
+y_sort_enabled = true
 position = Vector2(87, 680)
+zoom = Vector2(2, 2)
 script = ExtResource("4_1bvp3")
 
 [node name="GameMap" parent="." instance=ExtResource("2_h2yge")]
+y_sort_enabled = true
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="TextureRect" type="TextureRect" parent="CanvasLayer"]
+modulate = Color(1, 1, 1, 0.196078)
+self_modulate = Color(1, 1, 1, 0.196078)
+material = SubResource("ShaderMaterial_7mycd")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = SubResource("CanvasTexture_lquwl")
 
 [node name="HUD" parent="." instance=ExtResource("3_h2yge")]

@@ -14,8 +14,8 @@ public partial class GuiMap : Node2D
 
     public override void _Ready()
     {
-        _evenLayer.Position += new Vector2(0, 2);
-        _oddLayer.Position += new Vector2(0, -6);
+        _evenLayer.Position += new Vector2(0, 1);
+        _oddLayer.Position += new Vector2(0, -7);
     }
 
     public void HighlightTiles(IEnumerable<Vector3I> gridPositions)

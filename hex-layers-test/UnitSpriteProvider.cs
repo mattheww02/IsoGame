@@ -14,7 +14,12 @@ public partial class UnitSpriteProvider : Node
 
     public AnimatedSprite2D GetAnimatedSprite(Unit unit)
     {
-        return (unit.UnitSpriteType switch
+        return GetAnimatedSprite(unit.UnitSpriteType);
+    }
+
+    public AnimatedSprite2D GetAnimatedSprite(Enums.UnitSpriteType unitSpriteType)
+    {
+        return (unitSpriteType switch
         {
             Enums.UnitSpriteType.GoldenRetriever => _goldenRetrieverSpritePackedScene,
             Enums.UnitSpriteType.Cat => _catSpritePackedScene,

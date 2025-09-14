@@ -16,4 +16,14 @@ public partial class UnitFactory : Node
         unit.AddChild(unit.Sprite);
         return unit;
 	}
+
+    public Unit CreateUnit(Enums.UnitType unitType)
+    {
+        return unitType switch
+        {
+            Enums.UnitType.BasicMeleeFighter => CreateUnit<BasicMeleeFighter>(),
+            Enums.UnitType.BasicRangedFighter => CreateUnit<BasicRangedFighter>(),
+            _ => throw new NotImplementedException(),
+        };
+    }
 }

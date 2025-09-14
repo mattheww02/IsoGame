@@ -10,9 +10,10 @@ public abstract partial class Unit : Node2D
 {
 	public event Func<Vector2I, Vector2> GetPositionAdjusted;
 	public event Action<Unit> OnKilled;
+	public event Action OnMoveOrAction;
 
+    public abstract Enums.UnitType UnitType { get; }
     public abstract Enums.UnitSpriteType UnitSpriteType { get; }
-    public AnimatedSprite2D Sprite { get; set; }
     public abstract float MoveSpeed { get; }
     public abstract int MoveRange { get; }
 	public abstract int MaxActionPoints { get; }
@@ -20,22 +21,25 @@ public abstract partial class Unit : Node2D
 	public abstract int MaxHealth { get; }
 	public abstract int Stock { get; }
 
-	public int CurrentHealth { get; private set; }
+    public AnimatedSprite2D Sprite { get; set; }
+    public int CurrentHealth { get; private set; }
 	public bool IsInCombat { get; set; }
 	public bool IsMoving { get; set; }
+	public int TilesToOvertake { get; set; }
+	public bool HasPath => _gridPath.Count > 0;
 	public bool IsActing => _currentActionType != null;
     public Vector2I GridPosition => _targetGridPosition;
-	public Team Team { get; set; }
+    public Vector2I ReservedGridPosition { get; private set; }
+    public Team Team { get; set; }
 
 	protected readonly List<UnitActionType> _actionTypes = [];
 	private UnitActionType _currentActionType = null;
 	private int _timeSinceActionMs;
 	private int _actionPointsRemaining;
 	private readonly HashSet<Vector2I> _tileWatches = [];
-
 	private Vector2 _targetPosition;
 	private Vector2I _targetGridPosition;
-	private readonly Queue<Vector2I> _gridPath = [];
+    private readonly Queue<Vector2I> _gridPath = [];
 	private PathManager _pathManager;
 
     public override void _Ready()
@@ -46,10 +50,11 @@ public abstract partial class Unit : Node2D
 	{
 		_pathManager = pathManager;
 		GetPositionAdjusted += getPositionAdjusted;
-
+		YSortEnabled = true;
 		CurrentHealth = MaxHealth;
 		_targetGridPosition = gridPosition;
 		_targetPosition = GetPositionAdjusted(_targetGridPosition);
+		ReservedGridPosition = _targetGridPosition;
 		Position = _targetPosition;
 		_pathManager.RegisterStartPosition(this);
 		PopulateActionTypes();
@@ -131,24 +136,22 @@ public abstract partial class Unit : Node2D
 		// move
 		if (_targetPosition == Position)
 		{
-			if (_gridPath.Count > 0)
+            IsMoving = false;
+            if (_gridPath.Count > 0 && (TilesToOvertake > 0 || _pathManager.RegisterMove(this, _gridPath)))
 			{
-				IsMoving = true;
-				if (_pathManager.RegisterMove(this, _gridPath.Peek()))
+                IsMoving = true;
+                _targetGridPosition = _gridPath.Dequeue();
+                _targetPosition = GetPositionAdjusted(_targetGridPosition);
+
+				if (TilesToOvertake > 0) _pathManager.RegisterMoveOvertake(this, _targetGridPosition);
+                if (TilesToOvertake == 0) ReservedGridPosition = _targetGridPosition; //TODO: move ReservedGridPosition into PathManager
+
+				AdjustTileWatches();
+				if (!IsActing)
 				{
-					_targetGridPosition = _gridPath.Dequeue();
-					_targetPosition = GetPositionAdjusted(_targetGridPosition);
-					AdjustTileWatches();
-					if (!IsActing)
-					{
-						foreach (Vector2I watchPosition in _tileWatches)
-							_pathManager.CheckTileOccupied(watchPosition, ProcessWatchedTileEvent);
-					}
+					foreach (Vector2I watchPosition in _tileWatches)
+						_pathManager.CheckTileOccupied(watchPosition, ProcessWatchedTileEvent);
 				}
-			}
-			else
-			{
-				IsMoving = false;
 			}
 		}
 
@@ -157,14 +160,25 @@ public abstract partial class Unit : Node2D
 		Sprite.Play(UnitSpriteProvider.GetSpriteByDirection(direction));
 
         Position = Position.MoveToward(_targetPosition, MoveSpeed * (float)delta * (_currentActionType?.MoveSpeedMultiplier ?? 1f));
+		if (!direction.IsZeroApprox()) OnMoveOrAction?.Invoke();
 	}
 
 	public void MoveTo(Vector2I gridTo)
 	{
-		var path = _pathManager.GetPath(_targetGridPosition, gridTo).Skip(1).Take(MoveRange);
-
-        foreach (var pos in path ?? []) _gridPath.Enqueue(pos);
+		MoveTo(() => _pathManager.GetPath(_targetGridPosition, gridTo));
 	}
+
+	public void MoveTo(MultiUnitMoveRequest moveRequest)
+	{
+		MoveTo(() => _pathManager.GetPath(this, moveRequest));
+    }
+
+	private void MoveTo(Func<Vector2I[]> getPath)
+	{
+		_gridPath.Clear();
+		var path = getPath().Skip(1).Take(MoveRange);
+        foreach (var pos in path ?? []) _gridPath.Enqueue(pos);
+    }
 
 	public void StartCombatPhase()
 	{
@@ -188,9 +202,10 @@ public abstract partial class Unit : Node2D
 
         _actionPointsRemaining = 0;
 
+		_gridPath.Clear();
+        _pathManager.RegisterRemoval(this);
         foreach (var watch in _tileWatches) _pathManager.UnwatchTile(watch, ProcessWatchedTileEvent);
 		_tileWatches.Clear();
-		_pathManager.RegisterRemoval(this);
 
 		Visible = false;
     }
@@ -206,6 +221,7 @@ public abstract partial class Unit : Node2D
 				_currentActionType = actionType;
 				_actionPointsRemaining -= actionType.ActionPoints;
 				ScheduleAction(actionType, eventInfo.Unit);
+				OnMoveOrAction?.Invoke();
 				return;
 			}
 		}
